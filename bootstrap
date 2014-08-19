@@ -48,7 +48,7 @@ elif [ -b /dev/hdb ] ; then
 else
  echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
  #/sbin/shutdown -h now
- sleep 1234567890
+ #sleep 1234567890
 fi  
 
 if [ ! -d /etc/machinefeatures ] ; then
@@ -134,7 +134,7 @@ else
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
   #/sbin/shutdown -h now
-  sleep 1234567890
+  #sleep 1234567890
  fi
  unset X509_USER_CERT X509_USER_KEY
 fi
@@ -174,6 +174,7 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
     for i in *
     do
      if [ -f $i ] ; then
+      echo "$META_MACHINEOUTPUTS"
       curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file "$i" "$META_MACHINEOUTPUTS"
      fi
     done
