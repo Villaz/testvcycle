@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# vm-pilot wrapper - runs as atlas
+#
+# andrew.mcnab@cern.ch, March 2014
+#
+
+echo Output of vm-pilot for $HOSTNAME
+
+export GLITE_PYTHON_VERSION=2.6
+. /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+
+export PYTHONPATH="/cvmfs/grid.cern.ch/glite/lcg/lib64/python2.6/site-packages:$PYTHONPATH"
+export TMPDIR=/scratch/tmp
+export EDG_WL_SCRATCH=$TMPDIR
+export X509_USER_PROXY=/tmp/userproxy.pem
+export VO_ATLAS_SW_DIR=/cvmfs/atlas.cern.ch/repo/sw
+export MACHINEFEATURES=/etc/machinefeatures
+export JOBFEATURES=/etc/jobfeatures
+
+export VAC_FACTORY=`cat /etc/machinefeatures/vac_factory`
+export VAC_VMTYPE=`cat /etc/machinefeatures/vac_vmtype`
+export VAC_UUID=`cat /etc/machinefeatures/vac_uuid`
+export JOB_ID="$VAC_VMTYPE:$VAC_UUID"
+
+echo '--- $HOME/vm-pilot-extras start ---'
+cat $HOME/vm-pilot-extras
+. $HOME/vm-pilot-extras
+echo '---- $HOME/vm-pilot-extras end ----'
+
+if [ "$HTTP_LOGS" != "" ] ; then
+ export GTAG=`echo $HTTP_LOGS | sed "s/%f/$VAC_FACTORY/g" | sed "s:/*$:/$VAC_VMTYPE/$HOSTNAME/$VAC_UUID/vm-pilot.out:"`
+fi
+
+/var/spool/checkout/context/runpilot3-wrapper-oct02-nocleanup.sh -s $SITE_NAME -h $SITE_NAME -p 25443 -w https://pandaserver.cern.ch -r false -j false -k 4000

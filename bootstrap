@@ -1,0 +1,187 @@
+#!/bin/sh
+#
+# bootstrap script - runs as root
+#
+# andrew.mcnab@cern.ch, March-May 2014
+#
+
+# Just in case it doesn't exist
+mkdir -p /etc/machineoutputs
+
+(
+
+echo Output of VM bootstrap for `hostname`
+
+# vm-heartbeat will be touched every 5 minutes
+touch /etc/machineoutputs/vm-heartbeat
+
+# Create a shutdown_message if ACPI shutdown signal received
+cp -f /var/spool/checkout/context/power.sh /etc/acpi/actions/power.sh
+
+# Needed for POSIX semaphores
+mount /dev/shm
+chmod ugo+rwxt /dev/shm
+
+# Get the big 40G logical partition as /scratch
+mkdir -p /scratch
+if [ -b /dev/vdb1 -a -b /dev/vdb2 ] ; then
+  # Openstack at CERN with cvm* flavor? 
+  # vda1 is boot image, vdb1 is root partition, vdb2 is unformatted
+  mkfs -q -t ext4 /dev/vdb2
+  mount /dev/vdb2 /scratch 
+elif [ -b /dev/vdb1 ] ; then
+  # Openstack at CERN with hep* flavor?
+  # vda1 is boot image, vdb1 is root partition, and no vdb2
+  # Since boot image is small, can use rest of vda for /scratch
+  echo -e 'n\np\n2\n\n\nw\n'| fdisk /dev/vda
+  mkfs -q -t ext4 /dev/vda2
+  mount /dev/vda2 /scratch                     
+elif [ -b /dev/vdb ] ; then
+  mkfs -q -t ext4 /dev/vdb
+  mount /dev/vdb /scratch
+elif [ -b /dev/sdb ] ; then
+  mkfs -q -t ext4 /dev/sdb
+  mount /dev/sdb /scratch
+elif [ -b /dev/hdb ] ; then
+  mkfs -q -t ext4 /dev/hdb
+  mount /dev/hdb /scratch
+else
+ echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
+ #/sbin/shutdown -h now
+ sleep 1234567890
+fi  
+
+if [ ! -d /etc/machinefeatures ] ; then
+  # No NFS mounted machine/job features? OpenStack rather than Vac?
+
+  mkdir /etc/machinefeatures /etc/jobfeatures
+  
+  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json").json()["meta"]["jobfeatures"]'`
+  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json").json()["meta"]["machinefeatures"]'`
+  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json").json()["meta"]["machineoutputs"]'`
+
+  ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
+  ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
+  
+  echo dnsdomainname returns `dnsdomainname`
+  hostname `hostname -s`.cern.ch
+fi
+
+# anyone can create directories there
+chmod ugo+rwxt /scratch
+
+# We swap on the logical partition (doesn't work on aufs)
+fallocate -l 4g /scratch/swapfile
+chmod 0600 /scratch/swapfile
+mkswap /scratch/swapfile 
+swapon /scratch/swapfile
+
+# Bigger cvmfs cache, on the logical partition
+mkdir -p /scratch/cvmfs-cache
+echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
+/usr/bin/cvmfs_config reload
+attr -g proxy /mnt/.ro
+attr -g proxy /cvmfs/atlas.cern.ch/
+
+# Scratch tmp for TMPDIR
+mkdir -p /scratch/tmp
+chmod ugo+rwxt /scratch/tmp
+
+touch /etc/machineoutputs/athena-heartbeat
+echo '*/5 * * * * root /var/spool/checkout/context/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
+
+if [ "$META_MACHINEOUTPUTS" == "" ] ; then
+  # vm-heartbeat is writtenevery 5 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+else
+  # put vm-heartbeat on MJF server every 10 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  /usr/bin/curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/vm-heartbeat"
+  echo -e "RANDOM_DELAY=9\n*/10 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --capath /etc/grid-security/certificates  --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+fi
+
+# ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
+rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
+rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
+       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
+
+GMONDPORT=`python -c "import requests ; print requests.get('http://agm.cern.ch/atlas-gmond-cluster-cfg.json', timeout=60).json()['$1']['Port']"`
+if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
+  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$1/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/context/gmond.conf > /etc/ganglia/gmond.conf
+  service gmond restart
+fi
+
+# Get CA certs from cvmfs
+ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
+
+# Set up an account for the pilot to run as
+/usr/sbin/useradd -b /scratch atlas
+cd /scratch/atlas
+
+if [ -r /etc/vmtypefiles/userproxy.pem ] ; then
+ # Use proxy in NFS directory if present
+ cp /etc/vmtypefiles/userproxy.pem /tmp
+else
+ # Otherwise try myproxy
+ . /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+ unset X509_USER_PROXY
+ export X509_USER_CERT=/root/hostkey.pem
+ export X509_USER_KEY=/root/hostkey.pem 
+ # Myproxy username is "Panda queue name:X.509 DN"
+ myproxyname=`openssl x509 -in /root/hostkey.pem -noout -subject | sed "s/^subject= /$1:/"`
+ myproxy-logon -l "$myproxyname" -n -o /tmp/userproxy.pem -t 96
+ if [ $? != 0 ] ; then
+  echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
+  #/sbin/shutdown -h now
+  sleep 1234567890
+ fi
+ unset X509_USER_CERT X509_USER_KEY
+fi
+
+chown atlas.atlas /tmp/userproxy.pem
+chmod 0600 /tmp/userproxy.pem
+
+# user_data passes these to bootstrap on the command line
+echo "export SITE_NAME=$1"		 >/scratch/atlas/vm-pilot-extras
+echo "export VO_ATLAS_DEFAULT_SE=$2"	>>/scratch/atlas/vm-pilot-extras
+echo "export DPM_HOST=$2"		>>/scratch/atlas/vm-pilot-extras
+echo "export DPNS_HOST=$2"		>>/scratch/atlas/vm-pilot-extras
+echo "export HTTP_LOGS=$3"		>>/scratch/atlas/vm-pilot-extras
+chown atlas.atlas /scratch/atlas/vm-pilot-extras
+
+# We use sudo to run the vm-pilot wrapper
+echo 'Defaults !requiretty' >>/etc/sudoers
+echo 'Defaults visiblepw'   >>/etc/sudoers
+
+## vm-heartbeat is touched every 5 minutes but only create cron now bootstrap set up is done
+#touch /etc/machineoutputs/vm-heartbeat
+#echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+
+# Run vm-pilot
+touch /etc/machineoutputs/vm-pilot.err
+/usr/bin/sudo -n -u atlas /var/spool/checkout/context/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
+
+# Tell Vac what the outcome was
+/var/spool/checkout/context/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.out >/etc/machineoutputs/shutdown_message
+
+/bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
+           /etc/machineoutputs
+
+if [ "$META_MACHINEOUTPUTS" != "" ] ; then
+  (
+    cd /etc/machineoutputs
+    for i in *
+    do
+     if [ -f $i ] ; then
+      curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file "$i" "$META_MACHINEOUTPUTS"
+     fi
+    done
+  )
+fi 
+
+# And now his watch is ended...
+#/sbin/shutdown -h now
+sleep 1234567890
+
+) >/etc/machineoutputs/vm-pilot.log 2>&1

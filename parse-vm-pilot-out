@@ -1,0 +1,82 @@
+#!/usr/bin/python
+#
+# Parse PANDA pilot log file and output codes and messages
+# to use with HEPiX VM shutdown_command.
+#
+# See https://www.gridpp.ac.uk/wiki/HEPiX_shutdown_command
+#
+# This script takes the full path of the vm-pilot.out log 
+# file as its single argument, and outputs the code+message
+# on stdout. 
+#
+# The last matching pattern determines the code and message.
+# 
+# Andrew.McNab@cern.ch - March 2014
+#
+
+import sys
+
+# catch-all in case nothing matches
+shutdownMessage = '700 Failed, probably Pilot or Application problem'
+
+# log file patterns to look for and corresponding messages
+messageMappings = [
+
+# Variants of: "100 Shutdown as requested by the VM's host/hypervisor"
+######################################################################
+# There are other errors from the TimeLeft handling, but we let those go 
+# to the 600 Failed default
+
+# Variants of: "200 Intended work completed ok"
+###############################################
+# Our work is done. More work available in the TQ? Who knows!
+['!!FINISHED!!0!!Job successfully completed', '200 Success'],
+
+# Variants of: "300 No more work available from task queue"
+###########################################################
+# We asked, but nothing more from the matcher. 
+['!!FINISHED!!0!!Dispatcher has no jobs', '300 Nothing to do'],
+
+# Currently, there are no outcomes relating to 
+#     "400 Site/host/VM is currently banned/disabled from receiving more work"
+##############################################################################
+
+# Variants of: "500 Problem detected with environment/VM/contextualization provided by the site"
+################################################################################################
+
+# These next two will stop being 5xx site errors if proxies are provided by ATLAS
+["Couldn't find a valid proxy.", '500 Could not find a valid proxy'],
+["!!WARNING!!2999!! Voms proxy certificate does not exist or is too short.", "500 VOMS proxy missing or lifetime too short"],
+
+# Variants of: "600 Error related to job agent or application within VM"
+########################################################################
+# Some of the ways the JobAgent/Application can stop with errors. 
+# Otherwise we just get the default 700 Failed message.
+
+["!!FAILED!!3000!! Job failed", "700 Payload job failed"],
+
+]
+
+if len(sys.argv) <= 1 or not sys.argv[1]:
+    sys.exit(1)
+
+try:
+    f = open(sys.argv[1], 'r')
+except:
+    sys.exit(2)
+
+oneline = f.readline()
+
+while oneline:
+
+    for pair in messageMappings:
+      if pair[0] in oneline:
+         shutdownMessage = pair[1]
+         break
+
+    oneline = f.readline()    
+
+f.close()
+
+print shutdownMessage
+sys.exit(0)

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+(
+
+athena_stdout=`ls -t /scratch/tmp/condorg_*/pilot3/Panda_Pilot_*_*/PandaJob_*_*/*_stdout.txt | head -1`
+
+if [ "$athena_stdout" != "" ] ; then
+ touch -r "$athena_stdout" /etc/machineoutputs/athena-heartbeat
+else
+ touch /etc/machineoutputs/athena-heartbeat 
+fi
+
+) >/tmp/make-athena-heartbeat.log 2>&1
