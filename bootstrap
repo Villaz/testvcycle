@@ -16,7 +16,7 @@ echo Output of VM bootstrap for `hostname`
 touch /etc/machineoutputs/vm-heartbeat
 
 # Create a shutdown_message if ACPI shutdown signal received
-cp -f /var/spool/checkout/context/power.sh /etc/acpi/actions/power.sh
+cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
 
 # Needed for POSIX semaphores
 mount /dev/shm
@@ -88,7 +88,7 @@ mkdir -p /scratch/tmp
 chmod ugo+rwxt /scratch/tmp
 
 touch /etc/machineoutputs/athena-heartbeat
-echo '*/5 * * * * root /var/spool/checkout/context/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
+echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
 
 if [ "$META_MACHINEOUTPUTS" == "" ] ; then
   # vm-heartbeat is writtenevery 5 minutes
@@ -108,7 +108,7 @@ rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20c
 
 GMONDPORT=`python -c "import requests ; print requests.get('http://agm.cern.ch/atlas-gmond-cluster-cfg.json', timeout=60).json()['$1']['Port']"`
 if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
-  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$1/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/context/gmond.conf > /etc/ganglia/gmond.conf
+  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$1/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/testvcycle/gmond.conf > /etc/ganglia/gmond.conf
   service gmond restart
 fi
 
@@ -160,10 +160,10 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
-/usr/bin/sudo -n -u atlas /var/spool/checkout/context/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
+/usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
 
 # Tell Vac what the outcome was
-/var/spool/checkout/context/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.out >/etc/machineoutputs/shutdown_message
+/var/spool/checkout/testvcycle/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.out >/etc/machineoutputs/shutdown_message
 
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
@@ -182,6 +182,8 @@ fi
 
 # And now his watch is ended...
 #/sbin/shutdown -h now
-sleep 1234567890
+#sleep 1234567890
 
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
+
+echo "Finished"
