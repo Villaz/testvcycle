@@ -130,8 +130,8 @@ else
  export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
  export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
  export numberLinesPub=`expr $numberLines - $numberLinesPriv`
- head -n $numberLinesPriv combined.pem > /root/hostkey.pem
- tail -n $numberLinesPub combined.pem > /root/hostcert.pem
+ head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
+ tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
  chmod 600 /root/hostkey.pem
  rm /root/combined.pem
  
