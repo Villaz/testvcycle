@@ -125,10 +125,20 @@ if [ -r /etc/vmtypefiles/userproxy.pem ] ; then
  # Use proxy in NFS directory if present
  cp /etc/vmtypefiles/userproxy.pem /tmp
 else
+ # create hostkey and certkey
+ cp /root/hostkey.pem /root/combined.pem
+ export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
+ export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
+ export numberLinesPub=`expr $numberLines - $numberLinesPriv`
+ head -n $numberLinesPriv combined.pem > /root/hostkey.pem
+ tail -n $numberLinesPub combined.pem > /root/hostcert.pem
+ chmod 600 /root/hostkey.pem
+ rm /root/combined.pem
+ 
  # Otherwise try myproxy
  . /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
  unset X509_USER_PROXY
- export X509_USER_CERT=/root/hostkey.pem
+ export X509_USER_CERT=/root/hostcert.pem
  export X509_USER_KEY=/root/hostkey.pem 
  # Myproxy username is "Panda queue name:X.509 DN"
  myproxyname=`openssl x509 -in /root/hostkey.pem -noout -subject | sed "s/^subject= /$1:/"`
