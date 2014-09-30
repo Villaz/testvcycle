@@ -62,9 +62,11 @@ if [ ! -d /etc/machinefeatures ] ; then
 
   ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
   ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
+
+  if [ `hostname` != `hostname -s` ] ; then
+    hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
+  fi
   
-  echo dnsdomainname returns `dnsdomainname`
-  hostname `hostname -s`.cern.ch
 fi
 
 # anyone can create directories there
