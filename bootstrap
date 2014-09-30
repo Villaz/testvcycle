@@ -141,8 +141,8 @@ else
  export X509_USER_CERT=/root/hostcert.pem
  export X509_USER_KEY=/root/hostkey.pem 
  # Myproxy username is "Panda queue name:X.509 DN"
- myproxyname=`openssl x509 -in /root/hostkey.pem -noout -subject | sed "s/^subject= /$1:/"`
- myproxy-logon -l "$myproxyname" -n -o /tmp/userproxy.pem -t 96
+ myproxyname=`openssl x509 -in /root/hostcert.pem -noout -subject | sed "s/^subject= /$1/"`
+ echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -n -o /tmp/userproxy.pem -t 96
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
   #/sbin/shutdown -h now
