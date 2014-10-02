@@ -195,10 +195,11 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
 fi 
 
 cd /etc/machineoutputs
+ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
 for i in *
   do
     if [ -f $i ] ; then
-      scp -i /root/hostcert.pem "$i" root@vcycle-openstack"/var/lib/vcycle/machineoutputs/`hostname`_$i"
+      scp -i /root/hostkey.pem "$i" root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`
     fi
   done
 # And now his watch is ended...
