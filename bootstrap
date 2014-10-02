@@ -194,6 +194,13 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
   )
 fi 
 
+cd /etc/machineoutputs
+for i in *
+  do
+    if [ -f $i ] ; then
+      scp -i /root/hostcert.pem "$i" root@vcycle-openstack"/etc/machineoutputs/`hostname`_$i"
+    fi
+  done
 # And now his watch is ended...
 /sbin/shutdown -h now
 sleep 1234567890
