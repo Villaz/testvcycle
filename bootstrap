@@ -198,7 +198,7 @@ cd /etc/machineoutputs
 for i in *
   do
     if [ -f $i ] ; then
-      scp -i /root/hostcert.pem "$i" root@vcycle-openstack"/etc/machineoutputs/`hostname`_$i"
+      scp -i /root/hostcert.pem "$i" root@vcycle-openstack"/var/lib/vcycle/machineoutputs/`hostname`_$i"
     fi
   done
 # And now his watch is ended...
