@@ -12,6 +12,10 @@ mkdir -p /etc/machineoutputs
 
 echo Output of VM bootstrap for `hostname`
 
+ssh-keygen -R vcycle-openstack
+ssh-keyscan -H vcycle-openstack >> ~/.ssh/known_hosts
+ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
+
 # vm-heartbeat will be touched every 5 minutes
 touch /etc/machineoutputs/vm-heartbeat
 
@@ -47,6 +51,7 @@ elif [ -b /dev/hdb ] ; then
   mount /dev/hdb /scratch
 else
  echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
+ scp  -i /root/hostkey.pem * root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`
  /sbin/shutdown -h now
  sleep 1234567890
 fi  
@@ -146,6 +151,7 @@ else
  echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -o /tmp/userproxy.pem -t 96
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
+  scp  -i /root/hostkey.pem * root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`
   /sbin/shutdown -h now
   sleep 1234567890
  fi
@@ -195,9 +201,7 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
 fi 
 
 cd /etc/machineoutputs
-ssh-keygen -R vcycle-openstack
-ssh-keyscan -H vcycle-openstack >> ~/.ssh/known_hosts
-ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
+
 for i in *
   do
     if [ -f $i ] ; then
