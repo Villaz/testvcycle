@@ -12,6 +12,16 @@ mkdir -p /etc/machineoutputs
 
 echo Output of VM bootstrap for `hostname`
 
+# create hostkey and certkey
+cp /root/hostkey.pem /root/combined.pem
+export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
+export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
+export numberLinesPub=`expr $numberLines - $numberLinesPriv`
+head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
+tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
+chmod 600 /root/hostkey.pem
+rm /root/combined.pem
+
 ssh-keygen -R vcycle-openstack
 ssh-keyscan -H vcycle-openstack >> ~/.ssh/known_hosts
 ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
@@ -130,16 +140,6 @@ if [ -r /etc/vmtypefiles/userproxy.pem ] ; then
  # Use proxy in NFS directory if present
  cp /etc/vmtypefiles/userproxy.pem /tmp
 else
- # create hostkey and certkey
- cp /root/hostkey.pem /root/combined.pem
- export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
- export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
- export numberLinesPub=`expr $numberLines - $numberLinesPriv`
- head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
- tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
- chmod 600 /root/hostkey.pem
- rm /root/combined.pem
- 
  # Otherwise try myproxy
  . /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
  unset X509_USER_PROXY
