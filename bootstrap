@@ -8,7 +8,7 @@
 # Just in case it doesn't exist
 mkdir -p /etc/machineoutputs
 
-#(
+(
 
 echo Output of VM bootstrap for `hostname`
 
@@ -207,6 +207,6 @@ scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vc
 #/sbin/shutdown -h now
 #sleep 1234567890
 
-#) >/etc/machineoutputs/vm-pilot.log 2>&1
+) >/etc/machineoutputs/vm-pilot.log 2>&1
 
 
