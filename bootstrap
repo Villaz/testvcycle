@@ -115,8 +115,9 @@ if [ "$META_MACHINEOUTPUTS" == "" ] ; then
 else
   # put vm-heartbeat on MJF server every 10 minutes
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  scp -i /root/hostkey.pem /etc/machineoutputs/vm-heartbeat root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
   /usr/bin/curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat -k "$META_MACHINEOUTPUTS/vm-heartbeat"
-  echo -e "RANDOM_DELAY=9\n*/10 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --capath /etc/grid-security/certificates  --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat -k $META_MACHINEOUTPUTS/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+  echo -e "RANDOM_DELAY=9\n*/10 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/scp -i /root/hostkey.pem /etc/machineoutputs/vm-heartbeat root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/ >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
 fi
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
