@@ -188,19 +188,7 @@ touch /etc/machineoutputs/vm-pilot.err
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
 
-if [ "$META_MACHINEOUTPUTS" != "" ] ; then
-  (
-    cd /etc/machineoutputs
-    for i in *
-    do
-     if [ -f $i ] ; then
-      echo "$META_MACHINEOUTPUTS"
-      curl --capath /etc/grid-security/certificates --cert /root/hostcert.pem --upload-file "$i" -k "$META_MACHINEOUTPUTS"
-     fi
-    done
-  )
-fi 
-
+#send files to server
 scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
 
 # And now his watch is ended...
