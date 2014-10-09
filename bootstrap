@@ -63,8 +63,8 @@ elif [ -b /dev/hdb ] ; then
 else
  echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
  scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
- /sbin/shutdown -h now
- sleep 1234567890
+ #/sbin/shutdown -h now
+ #sleep 1234567890
 fi  
 
 if [ ! -d /etc/machinefeatures ] ; then
@@ -117,7 +117,7 @@ else
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
   scp -i /root/hostkey.pem /etc/machineoutputs/vm-heartbeat root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
   /usr/bin/curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat -k "$META_MACHINEOUTPUTS/vm-heartbeat"
-  echo -e "RANDOM_DELAY=9\n*/10 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/scp -i /root/hostkey.pem /etc/machineoutputs/vm-heartbeat root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/ >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+  echo -e "RANDOM_DELAY=9\n*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/scp -i /root/hostkey.pem /etc/machineoutputs/vm-heartbeat root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/ >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
 fi
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
@@ -154,8 +154,8 @@ else
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
   scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
-  /sbin/shutdown -h now
-  sleep 1234567890
+  #/sbin/shutdown -h now
+  #sleep 1234567890
  fi
  unset X509_USER_CERT X509_USER_KEY
 fi
