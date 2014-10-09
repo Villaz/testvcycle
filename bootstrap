@@ -63,8 +63,8 @@ elif [ -b /dev/hdb ] ; then
 else
  echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
  scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
- #/sbin/shutdown -h now
- #sleep 1234567890
+ /sbin/shutdown -h now
+ sleep 1234567890
 fi  
 
 if [ ! -d /etc/machinefeatures ] ; then
@@ -154,8 +154,8 @@ else
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
   scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
-  #/sbin/shutdown -h now
-  #sleep 1234567890
+  /sbin/shutdown -h now
+  sleep 1234567890
  fi
  unset X509_USER_CERT X509_USER_KEY
 fi
