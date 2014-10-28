@@ -23,8 +23,8 @@ chmod 600 /root/hostkey.pem
 rm /root/combined.pem
 
 ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
-ssh-keygen -R lvillazovm
-ssh-keyscan -H lvillazovm >> ~/.ssh/known_hosts
+ssh-keygen -R vcycle-manager-lv.cern.ch
+ssh-keyscan -H vcycle-manager-lv.cern.ch >> ~/.ssh/known_hosts
 #ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
 
 # vm-heartbeat will be touched every 5 minutes
@@ -62,9 +62,8 @@ elif [ -b /dev/hdb ] ; then
   mount /dev/hdb /scratch
 else
   echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
- #scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
- #/sbin/shutdown -h now
- #sleep 1234567890
+  #/sbin/shutdown -h now
+  #sleep 1234567890
 fi  
 
 if [ ! -d /etc/machinefeatures ] ; then
@@ -72,9 +71,9 @@ if [ ! -d /etc/machinefeatures ] ; then
 
   mkdir /etc/machinefeatures /etc/jobfeatures
   
-  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json").json()["meta"]["jobfeatures"]'`
-  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json").json()["meta"]["machinefeatures"]'`
-  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json").json()["meta"]["machineoutputs"]'`
+  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json", timeout=60).json()["meta"]["jobfeatures"]'`
+  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json", timeout=60).json()["meta"]["machinefeatures"]'`
+  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("http://169.254.169.254/openstack/2013-10-17/meta_data.json", timeout=60).json()["meta"]["machineoutputs"]'`
 
   ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
   ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
@@ -115,9 +114,8 @@ if [ "$META_MACHINEOUTPUTS" == "" ] ; then
 else
   # put vm-heartbeat on MJF server every 10 minutes
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
-  scp -i /root/hostkey.pem /etc/machineoutputs/vm-heartbeat root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
   /usr/bin/curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat -k "$META_MACHINEOUTPUTS/vm-heartbeat"
-  echo -e "RANDOM_DELAY=9\n*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/scp -i /root/hostkey.pem /etc/machineoutputs/vm-heartbeat root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/ >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+  echo -e "RANDOM_DELAY=9\n*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat" >/etc/cron.d/vm-heartbeat
 fi
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
@@ -153,7 +151,6 @@ else
  echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -o /tmp/userproxy.pem -t 96
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
-  scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
   /sbin/shutdown -h now
   sleep 1234567890
  fi
@@ -190,7 +187,6 @@ touch /etc/machineoutputs/vm-pilot.err
            /etc/machineoutputs
 
 #send files to server
-scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
 
 # And now his watch is ended...
 /sbin/shutdown -h now
