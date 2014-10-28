@@ -61,7 +61,7 @@ elif [ -b /dev/hdb ] ; then
   mkfs -q -t ext4 /dev/hdb
   mount /dev/hdb /scratch
 else
- #echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
+  echo "500 no vdb/hdb/sdb block device for /scratch" > /etc/machineoutputs/shutdown_message
  #scp -i /root/hostkey.pem /etc/machineoutputs/* root@vcycle-openstack:/var/lib/vcycle/machineoutputs/`hostname`/
  #/sbin/shutdown -h now
  #sleep 1234567890
