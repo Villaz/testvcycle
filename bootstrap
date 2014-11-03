@@ -71,9 +71,9 @@ if [ ! -d /etc/machinefeatures ] ; then
 
   mkdir /etc/machinefeatures /etc/jobfeatures
   
-  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv/meta/meta_data.json", timeout=60).json()["meta"]["jobfeatures"]'`
-  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv/meta/meta_data.json", timeout=60).json()["meta"]["machinefeatures"]'`
-  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv/meta/meta_data.json", timeout=60).json()["meta"]["machineoutputs"]'`
+  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["jobfeatures"]'`
+  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["machinefeatures"]'`
+  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["machineoutputs"]'`
 
   ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
   ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
@@ -123,7 +123,7 @@ rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
 rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
        http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
 
-GMONDPORT=`python -c "import requests ; print requests.get('http://vcycle-manager-lv/meta/egi-atlas-gmond-cluster-cfg.json', timeout=60).json()['$3']['Port']"`
+GMONDPORT=`python -c "import requests ; print requests.get('http://vcycle-manager-lv.cern.ch/meta/egi-atlas-gmond-cluster-cfg.json', timeout=60).json()['$3']['Port']"`
 if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
   sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$3/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/testvcycle/gmond.conf > /etc/ganglia/gmond.conf
   service gmond restart
