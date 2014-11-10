@@ -11,7 +11,7 @@ mkdir -p /etc/machineoutputs
 (
 
 echo Output of VM bootstrap for `hostname`
-echo $4
+
 # create hostkey and certkey
 cp /root/hostkey.pem /root/combined.pem
 export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
@@ -71,9 +71,9 @@ if [ ! -d /etc/machinefeatures ] ; then
 
   mkdir /etc/machinefeatures /etc/jobfeatures
   
-  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("$4/meta/meta_data.json", timeout=60).json()["meta"]["jobfeatures"]'`
-  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("$4/meta/meta_data.json", timeout=60).json()["meta"]["machinefeatures"]'`
-  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("$4/meta/meta_data.json", timeout=60).json()["meta"]["machineoutputs"]'`
+  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["jobfeatures"]'`
+  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["machinefeatures"]'`
+  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["machineoutputs"]'`
 
   ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
   ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
