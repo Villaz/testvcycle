@@ -71,16 +71,16 @@ if [ ! -d /etc/machinefeatures ] ; then
 
   mkdir /etc/machinefeatures /etc/jobfeatures
   
-  export     META_JOBFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["jobfeatures"]'`
-  export META_MACHINEFEATURES=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["machinefeatures"]'`
-  export  META_MACHINEOUTPUTS=`python -c 'import requests ; print requests.get("http://vcycle-manager-lv.cern.ch/meta/meta_data.json", timeout=60).json()["meta"]["machineoutputs"]'`
-
-  ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
-  ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
-
   if [ `hostname` != `hostname -s` ] ; then
     hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
   fi
+
+  export META_JOBFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/jobfeatures"
+  export META_MACHINEFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/machinefeatures"
+  export META_MACHINEOUTPUTS="http://vcycle-manager-lv.cern.ch"
+
+  ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
+  ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
   
 fi
 
