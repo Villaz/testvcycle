@@ -189,7 +189,7 @@ touch /etc/machineoutputs/vm-pilot.err
 #send files to server
 
 # And now his watch is ended...
-/sbin/shutdown -h now
+#/sbin/shutdown -h now
 sleep 1234567890
 
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
