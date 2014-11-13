@@ -187,6 +187,18 @@ touch /etc/machineoutputs/vm-pilot.err
            /etc/machineoutputs
 
 #send files to server
+if [ "$META_MACHINEOUTPUTS" != "" ] ; then
+(
+  cd /etc/machineoutputs
+  for i in *
+  do
+    if [ -f $i ] ; then
+       curl --upload-file "$i" "$META_MACHINEOUTPUTS/`hostname`/$i"
+    fi
+  done
+)
+fi 
+
 
 # And now his watch is ended...
 /sbin/shutdown -h now
