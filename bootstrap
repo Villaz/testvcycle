@@ -141,7 +141,7 @@ if [ -r /etc/vmtypefiles/userproxy.pem ] ; then
  cp /etc/vmtypefiles/userproxy.pem /tmp
 else
  # Otherwise try myproxy
- . /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+ . /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
  unset X509_USER_PROXY
  export X509_USER_CERT=/root/hostcert.pem
  export X509_USER_KEY=/root/hostkey.pem 
