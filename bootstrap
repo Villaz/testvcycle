@@ -75,12 +75,12 @@ if [ ! -d /etc/machinefeatures ] ; then
     hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
   fi
 
-  export META_JOBFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/jobfeatures"
-  export META_MACHINEFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/machinefeatures"
+  #export META_JOBFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/jobfeatures"
+  #export META_MACHINEFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/machinefeatures"
   export META_MACHINEOUTPUTS="http://vcycle-manager-lv.cern.ch/vcycle-cgi"
 
-  ( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
-  ( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
+  #( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
+  #( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
   
 fi
 
@@ -151,8 +151,8 @@ else
  echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -o /tmp/userproxy.pem -t 96
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
-  /sbin/shutdown -h now
-  sleep 1234567890
+  #/sbin/shutdown -h now
+  #sleep 1234567890
  fi
  unset X509_USER_CERT X509_USER_KEY
 fi
@@ -201,7 +201,7 @@ fi
 
 
 # And now his watch is ended...
-/sbin/shutdown -h now
+#/sbin/shutdown -h now
 #sleep 1234567890
 
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
