@@ -114,6 +114,7 @@ else
  myproxyname=`openssl x509 -in /root/hostcert.pem -noout -subject | sed "s/^subject= /$1:/"`
  echo $myproxyname
  echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -o /tmp/userproxy.pem -t 96
+ export X509_USER_PROXY=/tmp/userproxy.pem
  voms-proxy-info --all
  if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
