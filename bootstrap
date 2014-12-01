@@ -56,17 +56,18 @@ if [ ! -d /etc/machinefeatures ] ; then
   
 fi
 
-
+mkdir -p /scratch
+chmod ugo+rwxt /scratch
 # Bigger cvmfs cache, on the logical partition
-mkdir -p /tmp/cvmfs-cache
-echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/tmp/cvmfs-cache" >>/etc/cvmfs/site.conf
+mkdir -p /scratch/cvmfs-cache
+echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
 /usr/bin/cvmfs_config reload
 attr -g proxy /mnt/.ro
 attr -g proxy /cvmfs/atlas.cern.ch/
 
 # Scratch tmp for TMPDIR
-mkdir -p /tmp/tmp
-chmod ugo+rwxt /tmp/tmp
+mkdir -p /scratch/tmp
+chmod ugo+rwxt /scratch/tmp
 
 touch /etc/machineoutputs/athena-heartbeat
 echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
