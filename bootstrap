@@ -37,6 +37,34 @@ cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
 mount /dev/shm
 chmod ugo+rwxt /dev/shm
 
+# Get the big 40G logical partition as /scratch
+mkdir -p /scratch
+if [ -b /dev/vdb1 -a -b /dev/vdb2 ] ; then
+ # Openstack at CERN with cvm* flavor?
+ # vda1 is boot image, vdb1 is root partition, vdb2 is unformatted
+ mkfs -q -t ext4 /dev/vdb2
+ mount /dev/vdb2 /scratch
+elif [ -b /dev/vdb1 ] ; then
+ # Openstack at CERN with hep* flavor?
+ # vda1 is boot image, vdb1 is root partition, and no vdb2
+ # Since boot image is small, can use rest of vda for /scratch
+ echo -e 'n\np\n2\n\n\nw\n'| fdisk /dev/vda
+ mkfs -q -t ext4 /dev/vda2
+ mount /dev/vda2 /scratch
+elif [ -b /dev/vdb ] ; then
+ mkfs -q -t ext4 /dev/vdb
+ mount /dev/vdb /scratch
+elif [ -b /dev/sdb ] ; then
+ mkfs -q -t ext4 /dev/sdb
+ mount /dev/sdb /scratch
+elif [ -b /dev/hdb ] ; then
+ mkfs -q -t ext4 /dev/hdb
+ mount /dev/hdb /scratch
+else
+ echo "500 no vdb/hdb/sdb block device for /scratch" #> /etc/machineoutputs/shutdown_message
+ #/sbin/shutdown -h now
+ #sleep 1234567890
+fi 
 
 if [ ! -d /etc/machinefeatures ] ; then
   # No NFS mounted machine/job features? OpenStack rather than Vac?
@@ -56,8 +84,15 @@ if [ ! -d /etc/machinefeatures ] ; then
   
 fi
 
-mkdir -p /scratch
+# anyone can create directories there
 chmod ugo+rwxt /scratch
+
+# We swap on the logical partition (doesn't work on aufs)
+fallocate -l 4g /scratch/swapfile
+chmod 0600 /scratch/swapfile
+mkswap /scratch/swapfile
+swapon /scratch/swapfile
+
 # Bigger cvmfs cache, on the logical partition
 mkdir -p /scratch/cvmfs-cache
 echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
