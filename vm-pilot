@@ -8,9 +8,9 @@
 echo Output of vm-pilot for $HOSTNAME
 
 export GLITE_PYTHON_VERSION=2.6
-. /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+. /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
 
-export PYTHONPATH="/cvmfs/grid.cern.ch/glite/lcg/lib64/python2.6/site-packages:$PYTHONPATH"
+export PYTHONPATH="/cvmfs/grid.cern.ch/3.2.11-1/lcg/lib64/python2.6/site-packages:$PYTHONPATH"
 export TMPDIR=/scratch/tmp
 export EDG_WL_SCRATCH=$TMPDIR
 export X509_USER_PROXY=/tmp/userproxy.pem
