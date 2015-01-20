@@ -1,6 +1,18 @@
 #!/bin/bash
-# $Id: runpilot3-wrapper.sh-example 16784 2013-10-01 17:32:00Z plove $
 #
+# pilot wrapper used at CERN central pilot factories
+#
+
+VERSION=20141208
+
+function err() {
+  date --utc +"%Y-%m-%d %H:%M:%S %Z [wrapper] $@" >&2
+}
+
+function log() {
+  date --utc +"%Y-%m-%d %H:%M:%S %Z [wrapper] $@"
+}
+
 function lfc_test() {
     echo -n "Testing LFC module for $1: "
     which $1 &> /dev/null
@@ -36,34 +48,39 @@ function find_lfc_compatible_python() {
       echo "Native python version is > 2.6.0"
       lfc_test $pybin
       if [ $? = "0" ]; then
+        log "refactor: this site has native python $pyver"
+        err "refactor: this site has native python $pyver"
         return 0
       else
         echo "Trying cvmfs version..."
       fi
     else
+      log "refactor: this site has native python < 2.6.0"
+      err "refactor: this site has native python < 2.6.0"
       echo "Native python $pybin is old: $pyver"
       echo "Trying cvmfs version..."
     fi
     
-    # firstly try the cvmfs python2.6 binary
-    if [ -n "$APF_PYTHON26" ]; then
-      PYTHON26=/cvmfs/atlas.cern.ch/repo/sw/python/latest/setup.sh
-      if [ -f $PYTHON26 ] ; then
-        if [ ! -z $PYTHONPATH ]; then
-          echo "Clobbering PYTHONPATH. Needed to deal with tarball sites when using python2.6"
-          unset PYTHONPATH
-        fi
-        echo "sourcing cvmfs python2.6 setup: $PYTHON26"
-        source $PYTHON26
-        echo current PYTHONPATH=$PYTHONPATH
-        pybin=`which python`
-        lfc_test $pybin
-        if [ $? = "0" ]; then
-          return 0
-        fi
-      else
-        echo "cvmfs python2.6 not found"
+    # try the cvmfs python2.6 binary
+    PYTHON26=/cvmfs/atlas.cern.ch/repo/sw/python/latest/setup.sh
+    if [ -f $PYTHON26 ] ; then
+      if [ ! -z $PYTHONPATH ]; then
+        echo "Clobbering PYTHONPATH. Needed to deal with tarball sites when using python2.6"
+        unset PYTHONPATH
       fi
+      echo "sourcing cvmfs python2.6 setup: $PYTHON26"
+      source $PYTHON26
+      echo current PYTHONPATH=$PYTHONPATH
+      pybin=`which python`
+      lfc_test $pybin
+      if [ $? = "0" ]; then
+        log "refactor: this site using cvmfs python $pybin"
+        err "refactor: this site using cvmfs python $pybin"
+        return 0
+      fi
+    else
+      echo "cvmfs python2.6 not found"
+      err "not found: $PYTHON26"
     fi
 
     # On many sites python now works just fine (m/w also now
@@ -71,6 +88,8 @@ function find_lfc_compatible_python() {
     pybin=python
     lfc_test $pybin
     if [ $? = "0" ]; then
+        log "refactor: this site using default python $pybin"
+        err "refactor: this site using default python $pybin"
         return 0
     fi
 
@@ -78,315 +97,297 @@ function find_lfc_compatible_python() {
     pybin=python32
     lfc_test $pybin
     if [ $? == "0" ]; then
+        log "refactor: this site using python32 $pybin"
+        err "refactor: this site using python32 $pybin"
         return 0
     fi
 
     # Oh dear, we're doomed...
-    echo "ERROR: Failed to find an LFC compatible python."
-    echo "Going in with pybin=python - this will probably fail..."
-    pybin=python
+    log "ERROR: Failed to find an LFC compatible python, exiting"
+    err "ERROR: Failed to find an LFC compatible python, exiting"
+    exit 1
 }
 
 function get_pilot() {
-    # Extract the pilot via http from CERN (N.B. uudecode now deprecated)
-    # You can get custom pilots by having PILOT_HTTP_SOURCES defined
-    # Pilot tarballs have no pilot3/ directory stub, so we conform to that...
-    mkdir pilot3
-    cd pilot3
+  # If you define the environment variable PILOT_HTTP_SOURCES then
+  # loop over those servers. Otherwise use CERN.
+  # N.B. an RC pilot is chosen once every 100 downloads for production and
+  # ptest jobs use Paul's development release.
 
-    get_pilot_http $myargs
-    if [ $? = "0" ]; then
-        return 0
-    fi
+  mkdir pilot3
+  cd pilot3
 
-    echo "Could not get pilot code from any source. Self destruct in 5..4..3..2..1.."
-    return 1
-}
-
-
-
-function get_pilot_http() {
-    # If you define the environment variable PILOT_HTTP_SOURCES then
-    # loop over those servers. Otherwise use CERN, with Glasgow as a fallback.
-    # N.B. an RC pilot is chosen once every 100 downloads for production and
-    # ptest jobs use Paul's development release.
-    if [ -z "$PILOT_HTTP_SOURCES" ]; then
-        if echo $myargs | grep -- "-u ptest" > /dev/null; then 
-            echo "DEBUG: This is a ptest pilot. Will use development pilot code with python2.6"
-            PILOT_HTTP_SOURCES="http://project-atlas-gmsb.web.cern.ch/project-atlas-gmsb/pilotcode-dev.tar.gz"
-            PILOT_TYPE=PT
-            APF_PYTHON26=1
-        elif [ $(($RANDOM%100)) = "0" ]; then
-            echo "DEBUG: Release candidate pilot will be used with python2.6"
-            PILOT_HTTP_SOURCES="http://pandaserver.cern.ch:25085/cache/pilot/pilotcode-rc.tar.gz"
-            PILOT_TYPE=RC
-            APF_PYTHON26=1
-        else
-            echo "DEBUG: Normal production pilot code used." 
-            PILOT_HTTP_SOURCES="http://pandaserver.cern.ch:25085/cache/pilot/pilotcode.tar.gz"
-            PILOT_TYPE=PR
-        fi
-    fi
-    for source in $PILOT_HTTP_SOURCES; do
-        echo "Trying to download pilot from $source..."
-        curl --connect-timeout 30 --max-time 180 -sS $source | tar -xzf -
-        if [ -f pilot.py ]; then
-            echo "Downloaded pilot from $source"
-            return 0
-        fi
-        echo "Download from $source failed."
-    done
-    return 1
-}
-
-function set_limits() {
-    # Set some limits to catch jobs which go crazy from killing nodes
-    
-    # 20GB limit for output size (block = 1K in bash)
-    fsizelimit=$((20*1024*1024))
-    echo Setting filesize limit to $fsizelimit
-    ulimit -f $fsizelimit
-    
-    # Apply memory limit?
-    memLimit=0
-    while [ $# -gt 0 ]; do
-        if [ $1 == "-k" ]; then
-            memLimit=$2
-            shift $#
-        else
-            shift
-        fi
-    done
-    if [ $memLimit == "0" ]; then
-        echo No VMEM limit set
+  if [ -z "$PILOT_HTTP_SOURCES" ]; then
+    if echo $myargs | grep -- "-u ptest" > /dev/null; then 
+      log "This is a ptest pilot. Development pilot will be used"
+      PILOT_HTTP_SOURCES="http://project-atlas-gmsb.web.cern.ch/project-atlas-gmsb/pilotcode-dev.tar.gz"
+      PILOT_TYPE=PT
+    elif [ $(($RANDOM%100)) = "0" ]; then
+      log "Release candidate pilot will be used"
+      PILOT_HTTP_SOURCES="http://pandaserver.cern.ch:25085/cache/pilot/pilotcode-rc.tar.gz"
+      PILOT_TYPE=RC
     else
-        # Convert to kB
-        memLimit=$(($memLimit*1000))
-        echo Setting VMEM limit to ${memLimit}kB
-        ulimit -v $memLimit
+      log "Normal production pilot will be used" 
+      PILOT_HTTP_SOURCES="http://pandaserver.cern.ch:25085/cache/pilot/pilotcode-PICARD.tar.gz"
+      PILOT_TYPE=PR
     fi
+  fi
+
+  for url in $PILOT_HTTP_SOURCES; do
+    curl --connect-timeout 30 --max-time 180 -sS $url | tar -xzf -
+    if [ -f pilot.py ]; then
+      log "Pilot download OK: $url"
+      return 0
+    fi
+    log "ERROR: pilot download failed: $url"
+    err "ERROR: pilot download failed: $url"
+  done
+  return 1
 }
 
 function monrunning() {
-    echo -n 'Monitor ping: '
-    curl -ksS --connect-timeout 10 --max-time 20 -d state=running ${APFMON}/jobs/${APFFID}:${APFCID}
-    if [ $? -eq 0 ]; then
-        echo
-    else
-        echo $?
-        echo ARGS: -d state=exiting ${APFMON}/jobs/${APFFID}:${APFCID}
-    fi
+  if [ -z ${APFMON:-} ]; then
+    err 'wrapper monitoring not configured'
+    return
+  fi
+
+  out=$(curl -ksS --connect-timeout 10 --max-time 20 \
+             -d state=running -d wrapper=$VERSION \
+             ${APFMON}/jobs/${APFFID}:${APFCID})
+  if [[ "$?" -eq 0 ]]; then
+    log $out
+  else
+    err "wrapper monitor warning"
+    err "ARGS: -d state=exiting -d rc=$1 ${APFMON}/jobs/${APFFID}:${APFCID}"
+  fi
 }
 
 function monexiting() {
-    echo -n 'Monitor ping: '
-    curl -ksS --connect-timeout 10 --max-time 20 -d state=exiting -d rc=$1 ${APFMON}/jobs/${APFFID}:${APFCID}
-    if [ $? -eq 0 ]; then
-        echo
-    else
-        echo $?
-        echo ARGS: -d state=exiting -d rc=$1 ${APFMON}/jobs/${APFFID}:${APFCID}
-    fi
+  if [ -z ${APFMON:-} ]; then
+    err 'wrapper monitoring not configured'
+    return
+  fi
+
+  out=$(curl -ksS --connect-timeout 10 --max-time 20 -d state=exiting -d rc=$1 ${APFMON}/jobs/${APFFID}:${APFCID})
+  if [[ "$?" -eq 0 ]]; then
+    log $out
+  else
+    err "warning: wrapper monitor"
+    err "ARGS: -d state=exiting -d rc=$1 -d rc=$1 ${APFMON}/jobs/${APFFID}:${APFCID}"
+  fi
 }
 
-function monpost() {
-    # scrape PandaIDs from pilot log
-    echo 'SCRAPE PandaIDs: '
-    find -name pilotlog.* -exec egrep ^PandaID= {} \; 
-
-    echo 'END SCRAPE'
+function handler() {
+  log "Caught SIGTERM, sending to pilot PID:$pilotpid"
+  err "Caught SIGTERM, sending to pilot PID:$pilotpid"
+  kill -15 $pilotpid
+  wait
 }
 
-function set_forced_env() {
-    # Sometimes environment settings via condor fail if they are overwritten
-    # by the site. Force env vars by prefixing them with APF_FORCE_
-    echo Forced environment variables are
-    env | grep APF_FORCE_
-    eval $(env | egrep "^APF_FORCE_" | perl -pe 's/^APF_FORCE_//;')
-}
-
-
-## main ##
-
-echo "This is pilot wrapper $Id: runpilot3-wrapper.sh-example 16784 2013-10-01 17:32:00Z plove $"
-echo "Please send development requests to p.love@lancaster.ac.uk"
-
-# notify monitoring, job running
-monrunning
-
-# Check what was delivered
-echo "Scanning landing zone..."
-echo -n "Current dir: "
-startdir=$(pwd)
-echo $startdir
-ls -l
-me=$0
-myargs=$@
-echo "Me and my args: $0 $myargs"
-echo
-
-# If we have TMPDIR defined, then move into this directory
-# If it's not defined, then stay where we are
-if [ -n "$TMPDIR" ]; then
-    cd $TMPDIR
-fi
-templ=$(pwd)/condorg_XXXXXXXX
-temp=$(mktemp -d $templ)
-if [ $? -ne 0 ]; then
-  echo Failed: mktemp $templ
-  echo Exiting...
-  exit
-fi
+function main() {
+  #
+  # Fail early with useful diagnostics
+  #
+  # CHANGELOG:
+  # refactor and code cleanup
+  # added datetime to stdout/err
+  # ignore TMPDIR, just run in landing directory
+  # removed function set_limits, now done in pilot
+  # 
   
-echo Changing work directory to $temp
-cd $temp
+  echo "This is ATLAS pilot wrapper version: $VERSION"
+  echo "Please send development requests to p.love@lancaster.ac.uk"
+  
+  log "==== wrapper output BEGIN ===="
+  # notify monitoring, job running
+  monrunning
 
-# Try to get pilot code...
-get_pilot
-ls -l
-if [ ! -f pilot.py ]; then
-    echo "FATAL: Problem with pilot delivery - failing after dumping environment"
-fi
-
-# Set any limits we need to stop jobs going crazy
-echo
-echo "---- Setting crazy job protection limits ----"
-set_limits
-echo
-
-# Set any forced environment variables
-echo
-echo "---- Looking for forced environment variables ----"
-set_forced_env
-echo
-
-# Environment sanity check (useful for debugging)
-echo "---- Host Environment ----"
-uname -a
-hostname
-hostname -f
-echo
-
-echo "---- JOB Environment ----"
-env | sort
-echo
-
-echo "---- Shell Process Limits ----"
-ulimit -a
-echo
-
-echo "---- Proxy Information ----"
-voms-proxy-info -all
-echo
-
-# Unset https proxy - this is known to be broken 
-# and is usually unnecessary on the ports used by
-# the panda servers
-unset https_proxy HTTPS_PROXY
-
-# Set LFC api timeouts
-export LFC_CONNTIMEOUT=60
-export LFC_CONRETRY=2
-export LFC_CONRETRYINT=60
-
-
-# Find the best python to run with
-echo "---- Searching for LFC compatible python ----"
-find_lfc_compatible_python
-echo "Using $pybin for python LFC compatibility"
-echo
-
-# OSG or EGEE?
-if [ -n "$VO_ATLAS_SW_DIR" ]; then
+  echo "---- Host environment ----"
+  echo "hostname:" $(hostname)
+  echo "hostname -f:" $(hostname -f)
+  echo "pwd:" $(pwd)
+  echo "whoami:" $(whoami)
+  echo "id:" $(id)
+  if [[ -r /proc/version ]]; then
+    echo "/proc/version:" $(cat /proc/version)
+  fi
+  startdir=$(pwd)
+  myargs=$@
+  echo "cmd: $0 $myargs"
+  log "wrapper getopts: -h $hflag -p $pflag -s $sflag -u $uflag -w $wflag"
+  echo
+  
+  # If we have TMPDIR defined, then move into this directory
+  # If it's not defined, then stay where we are
+  # to be refactored away, always use pwd
+  if [ -n "$TMPDIR" ]; then
+    err "refactor: this site uses TMPDIR: $TMPDIR"
+    err "refactor: this site startdir: $startdir"
+    log "cd \$TMPDIR: $TMPDIR"
+    cd $TMPDIR
+  fi
+  templ=$(pwd)/condorg_XXXXXXXX
+  temp=$(mktemp -d $templ)
+  if [ $? -ne 0 ]; then
+    err "Failed: mktemp $templ"
+    log "Failed: mktemp $templ"
+    err "Exiting."
+    log "Exiting."
+    exit 1
+  fi
+    
+  log "cd $temp"
+  cd $temp
+  
+  # Try to get pilot code...
+  get_pilot
+  if [[ "$?" -ne 0 ]]; then
+    log "FATAL: failed to retrieve pilot code"
+    err "FATAL: failed to retrieve pilot code"
+    exit 1
+  fi
+  
+  echo "---- JOB Environment ----"
+  printenv | sort
+  echo
+  
+  echo "---- Shell process limits ----"
+  ulimit -a
+  echo
+  
+  echo "---- Proxy Information ----"
+  voms-proxy-info -all
+  echo
+  
+  # refactor
+  # Unset https proxy - this is known to be broken 
+  # and is usually unnecessary on the ports used by
+  # the panda servers
+  unset https_proxy HTTPS_PROXY
+  
+  # refactor
+  # Set LFC api timeouts
+  export LFC_CONNTIMEOUT=60
+  export LFC_CONRETRY=2
+  export LFC_CONRETRYINT=60
+  
+  # refactor
+  # Find the best python to run with
+  echo "---- Searching for LFC compatible python ----"
+  find_lfc_compatible_python
+  echo "Using $pybin for python LFC compatibility"
+  echo
+  
+  # OSG or EGEE?
+  # refactor, remove or handle OSG
+  echo "---- VO software area ----"
+  if [ -n "$VO_ATLAS_SW_DIR" ]; then
     echo "Found EGEE flavour site with software directory $VO_ATLAS_SW_DIR"
     ATLAS_AREA=$VO_ATLAS_SW_DIR
-elif [ -n "$OSG_APP" ]; then
+  elif [ -n "$OSG_APP" ]; then
     echo "Found OSG flavor site with software directory $OSG_APP/atlas_app/atlas_rel"
     ATLAS_AREA=$OSG_APP/atlas_app/atlas_rel
-else
-    echo "ERROR: Failed to find VO_ATLAS_SW_DIR or OSG_APP. This is a bad site."
+  else
+    log "ERROR: Failed to find VO_ATLAS_SW_DIR or OSG_APP. This is a bad site, exiting."
+    err "ERROR: Failed to find VO_ATLAS_SW_DIR or OSG_APP. This is a bad site, exiting."
+    exit 1
     ATLAS_AREA=/bad_site
-fi
+  fi
+  
+  ls -l $ATLAS_AREA/
+  echo
+  if [ -e $ATLAS_AREA/tags ]; then
+    echo "sha256sum $ATLAS_AREA/tags"
+    sha256sum $ATLAS_AREA/tags
+  else
+    err "ERROR: tags file does not exist: $ATLAS_AREA/tags, exiting."
+    log "ERROR: tags file does not exist: $ATLAS_AREA/tags, exiting."
+    exit 1
+  fi
+  echo
+  
+  # setup DDM client
+  echo "---- DDM setup ----"
+  if [ -f /cvmfs/atlas.cern.ch/repo/sw/ddm/latest/setup.sh ]; then
+    echo "Sourcing /cvmfs/atlas.cern.ch/repo/sw/ddm/latest/setup.sh"
+    source /cvmfs/atlas.cern.ch/repo/sw/ddm/latest/setup.sh
+  elif [ -f $ATLAS_AREA/ddm/latest/setup.sh ]; then
+    echo "Sourcing $ATLAS_AREA/ddm/latest/setup.sh"
+    err "refactor: sourcing $ATLAS_AREA/ddm/latest/setup.sh"
+    source $ATLAS_AREA/ddm/latest/setup.sh
+  else
+    log "WARNING: No DDM setup found to source, exiting."
+    err "WARNING: No DDM setup found to source, exiting."
+    exit 1
+  fi
+  echo
+  
+  echo "---- Local ATLAS setup ----"
+  echo "Looking for $ATLAS_AREA/local/setup.sh"
+  if [ -f $ATLAS_AREA/local/setup.sh ]; then
+      echo "Sourcing $ATLAS_AREA/local/setup.sh -s $sflag"
+      source $ATLAS_AREA/local/setup.sh -s $sflag
+  else
+      log "WARNING: No ATLAS local setup found"
+      err "refactor: this site has no local setup $ATLAS_AREA/local/setup.sh"
+  fi
+  echo
+  
+  # This is where the pilot rundirectory is - maybe left after job finishes
+  scratch=$(pwd)
+  
+  echo "---- Ready to run pilot ----"
+  # If we know the pilot type then set this
+  if [ -n "$PILOT_TYPE" ]; then
+      pilot_args="-d $scratch $myargs -i $PILOT_TYPE"
+  else
+      pilot_args="-d $scratch $myargs"
+  fi
+  
+  trap handler SIGTERM
+  cmd="$pybin pilot.py $pilot_args"
+  echo cmd: $cmd
+  log "==== pilot stdout BEGIN ===="
+  $cmd &
+  pilotpid=$!
+  wait $pilotpid
+  pilotrc=$?
+  log "==== pilot stdout END ===="
+  log "==== wrapper stdout RESUME ===="
+  log "Pilot exit status: $pilotrc"
+  
+  # notify monitoring, job exiting, capture the pilot exit status
+  if [ -f STATUSCODE ]; then
+    scode=$(cat STATUSCODE)
+  else
+    scode=$pilotrc
+  fi
+  log "STATUSCODE: $scode"
+  monexiting $scode
+  
+  # Now wipe out our temp run directory, so as not to leave rubbish lying around
+  cd $startdir
+  log "cleanup: rm -rf $temp"
+  rm -fr $temp
+  
+  log "==== wrapper stdout END ===="
+  exit
+}
 
-# Trouble with tags file in VO dir?
-echo "---- VO SW Area ----"
-ls -l $ATLAS_AREA/
-echo
-if [ -e $ATLAS_AREA/tags ]; then
-  echo Tag file contents:
-  cat $ATLAS_AREA/tags
-else
-  echo Error: Tags file does not exist: $ATLAS_AREA/tags
-fi
-echo
+hflag=''
+pflag=''
+sflag=''
+uflag=''
+wflag=''
+while getopts 'h:p:s:u:w:' flag; do
+  case "${flag}" in
+    h) hflag="${OPTARG}" ;;
+    p) pflag="${OPTARG}" ;;
+    s) sflag="${OPTARG}" ;;
+    u) uflag="${OPTARG}" ;;
+    w) wflag="${OPTARG}" ;;
+    *) err "Unexpected option ${flag}" ;;
+  esac
+done
 
-
-# Add DQ2 clients to the PYTHONPATH
-echo "---- DDM setup ----"
-if [ -n "$APF_PYTHON26" ] && [ -f /cvmfs/atlas.cern.ch/repo/sw/ddm/latest/setup.sh ]; then
-  echo "Sourcing /cvmfs/atlas.cern.ch/repo/sw/ddm/latest/setup.sh"
-  source /cvmfs/atlas.cern.ch/repo/sw/ddm/latest/setup.sh
-elif [ -f $ATLAS_AREA/ddm/latest/setup.sh ]; then
-  echo "Sourcing $ATLAS_AREA/ddm/latest/setup.sh"
-  source $ATLAS_AREA/ddm/latest/setup.sh
-else
-  echo "WARNING: No DDM setup found to source."
-fi
-echo
-
-# Search for local setup file
-echo "---- Local ATLAS setup ----"
-echo "Looking for $ATLAS_AREA/local/setup.sh"
-if [ -f $ATLAS_AREA/local/setup.sh ]; then
-    echo "Sourcing $ATLAS_AREA/local/setup.sh"
-    source $ATLAS_AREA/local/setup.sh
-else
-    echo "WARNING: No ATLAS local setup found to source."
-fi
-echo
-
-# This is where the pilot rundirectory is - maybe left after job finishes
-scratch=`pwd`
-
-echo "---- Ready to run pilot ----"
-echo "Arglist: $@"
-echo "My Arguments: $myargs"
-
-
-# If we know the pilot type then set this
-if [ -n "$PILOT_TYPE" ]; then
-    pilot_args="-d $scratch $myargs -i $PILOT_TYPE"
-else
-    pilot_args="-d $scratch $myargs"
-fi
-
-# Prd server and pass arguments
-cmd="$pybin pilot.py $pilot_args"
-
-echo cmd: $cmd
-$cmd
-pexitcode=$?
-
-echo
-echo "Pilot exit status was $pexitcode"
-
-# notify monitoring, job exiting, capture the pilot exit status
-if [ -f STATUSCODE ]; then
-echo
-  scode=`cat STATUSCODE`
-else
-  scode=$pexitcode
-fi
-echo -n STATUSCODE:
-echo $scode
-monexiting $scode
-monpost
-
-
-# Now wipe out our temp run directory, so as not to leave rubbish lying around
-#echo "Now clearing run directory of all files."
-#cd $startdir
-#rm -fr $temp
-
-# The end
-exit
+main "$@"
