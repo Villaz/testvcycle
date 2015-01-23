@@ -118,6 +118,9 @@ else
   echo -e "RANDOM_DELAY=9\n*/10 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
 fi
 
+#start crond
+/etc/init.d/crond start
+
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
 rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
 rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
