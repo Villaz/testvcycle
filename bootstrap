@@ -9,7 +9,7 @@
 mkdir -p /etc/machineoutputs
 
 (
-
+start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
 
 # create hostkey and certkey
@@ -78,7 +78,7 @@ if [ ! -d /etc/machinefeatures ] ; then
   #export META_JOBFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/jobfeatures"
   #export META_MACHINEFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/machinefeatures"
   export META_MACHINEOUTPUTS="http://vcycle-manager-lv.cern.ch/vcycle-cgi"
-
+  export META_MACHINESTATS="http://vcycle-manager-lv.cern.ch/vcycle-stats"
   #( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
   #( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
   
@@ -115,6 +115,7 @@ else
   # put vm-heartbeat on MJF server every 10 minutes
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
+  
   /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
   /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
   echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
@@ -183,6 +184,9 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 #touch /etc/machineoutputs/vm-heartbeat
 #echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
 
+end=$(date +%s)
+diff=$((end-start))
+/usr/bin/curl -XPUT "$META_MACHINESTATS/$3/$diff"
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
 /usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
