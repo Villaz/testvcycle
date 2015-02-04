@@ -9,6 +9,14 @@
 mkdir -p /etc/machineoutputs
 
 (
+ 
+host=`hostname`
+b=(${host//-/ })
+startMachine=${b[2]}
+actual=$(date +%s)
+boottime=$(($actual - $startMachine))
+
+
 start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
 
@@ -83,7 +91,7 @@ if [ ! -d /etc/machinefeatures ] ; then
   #( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
   
 fi
-
+/usr/bin/curl -XPUT "$META_MACHINESTATS/boot/$3/$boottime"
 # anyone can create directories there
 chmod ugo+rwxt /scratch
 
@@ -186,7 +194,7 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 
 end=$(date +%s)
 diff=$((end-start))
-/usr/bin/curl -XPUT "$META_MACHINESTATS/$3/$diff"
+/usr/bin/curl -XPUT "$META_MACHINESTATS/fizzle/$3/$diff"
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
 /usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
