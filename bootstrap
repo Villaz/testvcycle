@@ -213,7 +213,7 @@ touch /etc/machineoutputs/vm-pilot.err
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
 
-python /var/spool/checkout/testvcycle/python `hostname`  
+python /var/spool/checkout/testvcycle/amazon.py `hostname`  
 
 #send files to server
 if [ "$META_MACHINEOUTPUTS" != "" ] ; then
