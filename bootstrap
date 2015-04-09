@@ -29,8 +29,8 @@ boottime=$(($actual - $startMachine))
 start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
 
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});db.servers.save({'id': '$host','site':'$3'})if(obj == None) else 0"
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['boot']=$boottime;db.servers.save(obj)"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});db.servers.save({'hostname': '$host','site':'$3'})if(obj == None) else 0"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['boot']=$boottime;db.servers.save(obj)"
 
 # create hostkey and certkey
 cp /root/hostkey.pem /root/combined.pem
@@ -131,7 +131,7 @@ if [ "$META_MACHINEOUTPUTS" == "" ] ; then
   # vm-heartbeat is writtenevery 5 minutes
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
   echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
-  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >/etc/crontab
+  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >/etc/crontab
 
 else
   # put vm-heartbeat on MJF server every 10 minutes
@@ -145,7 +145,7 @@ fi
 
 #start crond
 /etc/init.d/crond start
-/usr/bin/python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)"
+/usr/bin/python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)"
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
 rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
@@ -210,7 +210,7 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 end=$(date +%s)
 diff=$((end-start))
 /usr/bin/curl -XPUT "$META_MACHINESTATS/fizzle/$3/$diff"
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['start']=$diff;db.servers.save(obj)"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['start']=$diff;db.servers.save(obj)"
 
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
@@ -239,7 +239,7 @@ fi
 
 end=$(date +%s)
 diff=$((end-start))
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['end']=$diff;db.servers.save(obj)"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['end']=$diff;db.servers.save(obj)"
 
 # And now his watch is ended...
 #/sbin/shutdown -h now
