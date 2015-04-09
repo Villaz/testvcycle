@@ -30,7 +30,7 @@ start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
 
 python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});db.servers.save({'hostname': '$host','site':'$3'})if(obj == None) else 0"
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['boot']=$boottime;db.servers.save(obj)"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['boot']=$boottime;obj['state']='STARTED';db.servers.save(obj)"
 
 # create hostkey and certkey
 cp /root/hostkey.pem /root/combined.pem
@@ -239,7 +239,7 @@ fi
 
 end=$(date +%s)
 diff=$((end-start))
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['end']=$diff;db.servers.save(obj)"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['end']=$diff;obj['state']='ENDED';db.servers.save(obj)"
 
 # And now his watch is ended...
 #/sbin/shutdown -h now
