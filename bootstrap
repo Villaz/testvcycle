@@ -239,7 +239,8 @@ fi
 
 end=$(date +%s)
 diff=$((end-start))
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['end']=$diff;obj['state']='ENDED';db.servers.save(obj)"
+message=`cat /etc/machineoutputs/shutdown_message`
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['end']=$diff;obj['state']='ENDED';obj['message']='$message';db.servers.save(obj)"
 
 # And now his watch is ended...
 #/sbin/shutdown -h now
