@@ -9,7 +9,7 @@
 mkdir -p /etc/machineoutputs
 
 (
- 
+
 export TSD_HOST=191.233.72.229
 git clone git://github.com/OpenTSDB/tcollector.git
 ./tcollector/startstop start
@@ -17,6 +17,7 @@ git clone git://github.com/OpenTSDB/tcollector.git
 wget https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
 pip install boto
+pip install pymongo
 
 host=`hostname`
 b=(${host//-/ })
@@ -27,6 +28,9 @@ boottime=$(($actual - $startMachine))
 
 start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
+
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});db.servers.save({'id': '$host'})if(obj == None) else 0"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['boot']=$boottime;db.servers.save(obj)"
 
 # create hostkey and certkey
 cp /root/hostkey.pem /root/combined.pem
@@ -80,13 +84,13 @@ else
  echo "500 no vdb/hdb/sdb block device for /scratch" #> /etc/machineoutputs/shutdown_message
  #/sbin/shutdown -h now
  #sleep 1234567890
-fi 
+fi
 
 if [ ! -d /etc/machinefeatures ] ; then
   # No NFS mounted machine/job features? OpenStack rather than Vac?
 
   mkdir /etc/machinefeatures /etc/jobfeatures
-  
+
   if [ `hostname` != `hostname -s` ] ; then
     hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
   fi
@@ -97,7 +101,7 @@ if [ ! -d /etc/machinefeatures ] ; then
   export META_MACHINESTATS="http://vcycle-manager-lv.cern.ch/vcycle-stats"
   #( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
   #( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
-  
+
 fi
 /usr/bin/curl -XPUT "$META_MACHINESTATS/boot/$3/$boottime"
 # anyone can create directories there
@@ -127,11 +131,13 @@ if [ "$META_MACHINEOUTPUTS" == "" ] ; then
   # vm-heartbeat is writtenevery 5 minutes
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
   echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >/etc/crontab
+
 else
   # put vm-heartbeat on MJF server every 10 minutes
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
-  
+
   /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
   /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
   echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
@@ -139,6 +145,7 @@ fi
 
 #start crond
 /etc/init.d/crond start
+/usr/bin/python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)"
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
 rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
@@ -166,7 +173,7 @@ else
  . /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
  unset X509_USER_PROXY
  export X509_USER_CERT=/root/hostcert.pem
- export X509_USER_KEY=/root/hostkey.pem 
+ export X509_USER_KEY=/root/hostkey.pem
  # Myproxy username is "Panda queue name:X.509 DN"
  myproxyname=`openssl x509 -in /root/hostcert.pem -noout -subject | sed "s/^subject= /$1:/"`
  echo $myproxyname
@@ -203,6 +210,8 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 end=$(date +%s)
 diff=$((end-start))
 /usr/bin/curl -XPUT "$META_MACHINESTATS/fizzle/$3/$diff"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['start']=$diff;db.servers.save(obj)"
+
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
 /usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
@@ -213,7 +222,7 @@ touch /etc/machineoutputs/vm-pilot.err
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
 
-python /var/spool/checkout/testvcycle/amazon.py `hostname`  
+python /var/spool/checkout/testvcycle/amazon.py `hostname`
 
 #send files to server
 if [ "$META_MACHINEOUTPUTS" != "" ] ; then
@@ -226,13 +235,14 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
     fi
   done
 )
-fi 
+fi
 
+end=$(date +%s)
+diff=$((end-start))
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['end']=$diff;db.servers.save(obj)"
 
 # And now his watch is ended...
 #/sbin/shutdown -h now
 #sleep 1234567890
 
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
-
-
