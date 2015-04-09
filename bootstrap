@@ -29,7 +29,7 @@ boottime=$(($actual - $startMachine))
 start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
 
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});db.servers.save({'id': '$host'})if(obj == None) else 0"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});db.servers.save({'id': '$host','site':'$3'})if(obj == None) else 0"
 python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'id': '$host'});obj['boot']=$boottime;db.servers.save(obj)"
 
 # create hostkey and certkey
