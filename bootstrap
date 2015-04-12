@@ -10,9 +10,9 @@ mkdir -p /etc/machineoutputs
 
 (
 
-export TSD_HOST=191.233.72.229
-git clone git://github.com/OpenTSDB/tcollector.git
-./tcollector/startstop start
+#export TSD_HOST=191.233.72.229
+#git clone git://github.com/OpenTSDB/tcollector.git
+#./tcollector/startstop start
 
 wget https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
