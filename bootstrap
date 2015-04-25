@@ -131,7 +131,7 @@ if [ "$META_MACHINEOUTPUTS" == "" ] ; then
   # vm-heartbeat is writtenevery 5 minutes
   echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
   echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
-  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >/etc/crontab
+  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >>/etc/crontab
 
 else
   # put vm-heartbeat on MJF server every 10 minutes
