@@ -10,6 +10,9 @@ mkdir -p /etc/machineoutputs
 
 (
 
+
+
+
 export TSD_HOST=191.233.72.229
 git clone git://github.com/OpenTSDB/tcollector.git
 ./tcollector/startstop start
@@ -21,10 +24,18 @@ pip install pymongo
 
 host=`hostname`
 b=(${host//-/ })
-startMachine=${b[2]}
+startMachine=$(date +%s)
 actual=$(date +%s)
 boottime=$(($actual - $startMachine))
 
+cat << X5_EOF > /root/logs.py
+from pymongo import MongoClient
+import time
+client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');
+db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});
+obj['bootstrap_log']=open('/etc/machineoutputs/vm-pilot.log','r').read()
+db.servers.save(obj)
+X5_EOF
 
 start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
@@ -32,20 +43,10 @@ echo Output of VM bootstrap for `hostname`
 python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});db.servers.save({'hostname': '$host','site':'$3','state':'BOOTED'})if(obj == None) else 0"
 python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['boot']=$boottime;obj['state']='BOOTED';db.servers.save(obj)"
 
-# create hostkey and certkey
-cp /root/hostkey.pem /root/combined.pem
-export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
-export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
-export numberLinesPub=`expr $numberLines - $numberLinesPriv`
-head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
-tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
-chmod 600 /root/hostkey.pem
-rm /root/combined.pem
 
-ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
-ssh-keygen -R vcycle-manager-lv.cern.ch
-ssh-keyscan -H vcycle-manager-lv.cern.ch >> ~/.ssh/known_hosts
-#ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
+
+
+echo "* * * * * root /usr/bin/python /root/logs.py" >>/etc/crontab
 
 # vm-heartbeat will be touched every 5 minutes
 touch /etc/machineoutputs/vm-heartbeat
@@ -136,21 +137,9 @@ obj['heartbeat']=int(time.time())
 db.servers.save(obj)
 X5_EOF
 
-if [ "$META_MACHINEOUTPUTS" == "" ] ; then
-  # vm-heartbeat is writtenevery 5 minutes
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
-  echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
-  echo "* * * * * root /usr/bin/python /root/cron.py" >>/etc/crontab
 
-else
-  # put vm-heartbeat on MJF server every 10 minutes
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
+echo "* * * * * root /usr/bin/python /root/cron.py" >>/etc/crontab
 
-  /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
-  /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
-  echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
-fi
 
 #start crond
 /etc/init.d/crond start
