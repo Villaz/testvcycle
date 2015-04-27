@@ -48,6 +48,20 @@ python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycl
 
 echo "* * * * * root /usr/bin/python /root/logs.py" >>/etc/crontab
 
+# create hostkey and certkey
+cp /root/hostkey.pem /root/combined.pem
+export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
+export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
+export numberLinesPub=`expr $numberLines - $numberLinesPriv`
+head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
+tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
+chmod 600 /root/hostkey.pem
+rm /root/combined.pem
+ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
+ssh-keygen -R vcycle-manager-lv.cern.ch
+ssh-keyscan -H vcycle-manager-lv.cern.ch >> ~/.ssh/known_hosts
+#ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
+
 # vm-heartbeat will be touched every 5 minutes
 touch /etc/machineoutputs/vm-heartbeat
 
