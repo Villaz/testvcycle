@@ -31,10 +31,8 @@ boottime=$(($actual - $startMachine))
 cat << X5_EOF > /root/logs.py
 from pymongo import MongoClient
 import time
-client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');
-db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});
-obj['bootstrap_log']=open('/etc/machineoutputs/vm-pilot.log','r').read()
-db.servers.save(obj)
+client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity')
+db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'bootstrap_log':open('/etc/machineoutputs/vm-pilot.log','r').read()})
 X5_EOF
 
 start=$(date +%s)
@@ -146,9 +144,7 @@ cat << X5_EOF > /root/cron.py
 from pymongo import MongoClient
 import time
 client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');
-db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});
-obj['heartbeat']=int(time.time())
-db.servers.save(obj)
+db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'heartbeat':int(time.time())});
 X5_EOF
 
 
@@ -222,7 +218,7 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 end=$(date +%s)
 diff=$((end-start))
 /usr/bin/curl -XPUT "$META_MACHINESTATS/fizzle/$3/$diff"
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['start']=$diff;obj['state']='STARTED';db.servers.save(obj)"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'start':$diff,'state':'STARTED'})"
 
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
@@ -252,7 +248,7 @@ fi
 end=$(date +%s)
 diff=$((end-start))
 message=`cat /etc/machineoutputs/shutdown_message`
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['end']=$diff;obj['state']='ENDED';obj['message']='$message';db.servers.save(obj)"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'end':$diff,'state':'ENDED','message':'$message'})"
 
 # And now his watch is ended...
 #/sbin/shutdown -h now
