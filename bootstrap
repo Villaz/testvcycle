@@ -24,7 +24,7 @@ pip install pymongo
 
 host=`hostname`
 b=(${host//-/ })
-startMachine=$(date +%s)
+startMachine=${b[2]}
 actual=$(date +%s)
 boottime=$(($actual - $startMachine))
 
