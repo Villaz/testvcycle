@@ -10,55 +10,16 @@ mkdir -p /etc/machineoutputs
 
 (
 
-
-
-
-export TSD_HOST=serverlv.cloudapp.net
-git clone git://github.com/OpenTSDB/tcollector.git
-./tcollector/startstop start
-
-wget https://bootstrap.pypa.io/get-pip.py
-python get-pip.py
-pip install boto
-pip install pymongo
-
 host=`hostname`
 b=(${host//-/ })
 startMachine=${b[2]}
 actual=$(date +%s)
 boottime=$(($actual - $startMachine))
 
-cat << X5_EOF > /root/logs.py
-from pymongo import MongoClient
-import time
-client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity')
-db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'bootstrap_log':open('/etc/machineoutputs/vm-pilot.log','r').read()})
-X5_EOF
+
 
 start=$(date +%s)
 echo Output of VM bootstrap for `hostname`
-
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});db.servers.save({'hostname': '$host','site':'$3','state':'BOOTED'})if(obj == None) else 0"
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['boot']=$boottime;obj['state']='BOOTED';db.servers.save(obj)"
-
-
-
-
-echo "* * * * * root /usr/bin/python /root/logs.py" >>/etc/crontab
-
-# create hostkey and certkey
-cp /root/hostkey.pem /root/combined.pem
-export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
-export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
-export numberLinesPub=`expr $numberLines - $numberLinesPriv`
-head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
-tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
-chmod 600 /root/hostkey.pem
-rm /root/combined.pem
-ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
-ssh-keygen -R vcycle-manager-lv.cern.ch
-ssh-keyscan -H vcycle-manager-lv.cern.ch >> ~/.ssh/known_hosts
-#ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
 
 # vm-heartbeat will be touched every 5 minutes
 touch /etc/machineoutputs/vm-heartbeat
@@ -140,17 +101,6 @@ chmod ugo+rwxt /scratch/tmp
 touch /etc/machineoutputs/athena-heartbeat
 echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
 
-cat << X5_EOF > /root/cron.py
-from pymongo import MongoClient
-import time
-client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');
-db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'heartbeat':int(time.time())});
-X5_EOF
-
-
-echo "* * * * * root /usr/bin/python /root/cron.py" >>/etc/crontab
-
-
 #start crond
 /etc/init.d/crond start
 /usr/bin/python /root/cron.py
@@ -215,10 +165,8 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 #touch /etc/machineoutputs/vm-heartbeat
 #echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
 
-end=$(date +%s)
-diff=$((end-start))
 /usr/bin/curl -XPUT "$META_MACHINESTATS/fizzle/$3/$diff"
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'start':$diff,'state':'STARTED'})"
+node /root/updates.js -i $host -t start
 
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
@@ -245,11 +193,7 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
 )
 fi
 
-end=$(date +%s)
-diff=$((end-start))
-message=`cat /etc/machineoutputs/shutdown_message`
-python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.update_one({'hostname': '$host'},{'end':$diff,'state':'ENDED','message':'$message'})"
-
+node /root/updates.js -i $host -t end -m $message
 # And now his watch is ended...
 #/sbin/shutdown -h now
 #sleep 1234567890
