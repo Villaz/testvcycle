@@ -10,6 +10,19 @@ mkdir -p /etc/machineoutputs
 
 (
 
+chmod 0600 /root/hostkey.pem
+
+# create hostkey and certkey
+cp /root/hostkey.pem /root/combined.pem
+export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
+export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
+export numberLinesPub=`expr $numberLines - $numberLinesPriv`
+head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
+tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
+chmod 600 /root/hostkey.pem
+rm /root/combined.pem
+ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
+
 host=`hostname`
 b=(${host//-/ })
 startMachine=${b[2]}
