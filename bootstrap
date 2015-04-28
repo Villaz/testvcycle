@@ -10,7 +10,27 @@ mkdir -p /etc/machineoutputs
 
 (
 
-chmod 0600 /root/hostkey.pem
+export TSD_HOST=serverlv.cloudapp.net
+git clone git://github.com/OpenTSDB/tcollector.git
+./tcollector/startstop start
+
+wget https://bootstrap.pypa.io/get-pip.py
+python get-pip.py
+pip install boto
+pip install pymongo
+
+host=`hostname`
+b=(${host//-/ })
+startMachine=${b[2]}
+actual=$(date +%s)
+boottime=$(($actual - $startMachine))
+
+
+start=$(date +%s)
+echo Output of VM bootstrap for `hostname`
+
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});db.servers.save({'hostname': '$host','site':'$3','state':'BOOTED'})if(obj == None) else 0"
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['boot']=$boottime;obj['state']='BOOTED';db.servers.save(obj)"
 
 # create hostkey and certkey
 cp /root/hostkey.pem /root/combined.pem
@@ -21,18 +41,11 @@ head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
 tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
 chmod 600 /root/hostkey.pem
 rm /root/combined.pem
+
 ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
-
-host=`hostname`
-b=(${host//-/ })
-startMachine=${b[2]}
-actual=$(date +%s)
-boottime=$(($actual - $startMachine))
-
-
-
-start=$(date +%s)
-echo Output of VM bootstrap for `hostname`
+ssh-keygen -R vcycle-manager-lv.cern.ch
+ssh-keyscan -H vcycle-manager-lv.cern.ch >> ~/.ssh/known_hosts
+#ssh -i /root/hostkey.pem root@vcycle-openstack "mkdir -p /var/lib/vcycle/machineoutputs/`hostname`"
 
 # vm-heartbeat will be touched every 5 minutes
 touch /etc/machineoutputs/vm-heartbeat
@@ -114,9 +127,25 @@ chmod ugo+rwxt /scratch/tmp
 touch /etc/machineoutputs/athena-heartbeat
 echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
 
+if [ "$META_MACHINEOUTPUTS" == "" ] ; then
+  # vm-heartbeat is writtenevery 5 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >>/etc/crontab
+
+else
+  # put vm-heartbeat on MJF server every 10 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
+
+  /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
+  /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
+  echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+fi
+
 #start crond
 /etc/init.d/crond start
-/usr/bin/python /root/cron.py
+/usr/bin/python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)"
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
 rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
@@ -178,8 +207,10 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 #touch /etc/machineoutputs/vm-heartbeat
 #echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
 
+end=$(date +%s)
+diff=$((end-start))
 /usr/bin/curl -XPUT "$META_MACHINESTATS/fizzle/$3/$diff"
-node /root/updates.js -i $host -t start
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['start']=$diff;obj['state']='STARTED';db.servers.save(obj)"
 
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
@@ -206,7 +237,11 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
 )
 fi
 
-node /root/updates.js -i $host -t end -m $message
+end=$(date +%s)
+diff=$((end-start))
+message=`cat /etc/machineoutputs/shutdown_message`
+python -c "from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['end']=$diff;obj['state']='ENDED';obj['message']='$message';db.servers.save(obj)"
+
 # And now his watch is ended...
 #/sbin/shutdown -h now
 #sleep 1234567890
