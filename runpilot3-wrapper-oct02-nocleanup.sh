@@ -3,7 +3,7 @@
 # pilot wrapper used at CERN central pilot factories
 #
 
-VERSION=20141208
+VERSION=20150501
 
 function err() {
   date --utc +"%Y-%m-%d %H:%M:%S %Z [wrapper] $@" >&2
@@ -60,7 +60,7 @@ function find_lfc_compatible_python() {
       echo "Native python $pybin is old: $pyver"
       echo "Trying cvmfs version..."
     fi
-    
+
     # try the cvmfs python2.6 binary
     PYTHON26=/cvmfs/atlas.cern.ch/repo/sw/python/latest/setup.sh
     if [ -f $PYTHON26 ] ; then
@@ -118,7 +118,7 @@ function get_pilot() {
   cd pilot3
 
   if [ -z "$PILOT_HTTP_SOURCES" ]; then
-    if echo $myargs | grep -- "-u ptest" > /dev/null; then 
+    if echo $myargs | grep -- "-u ptest" > /dev/null; then
       log "This is a ptest pilot. Development pilot will be used"
       PILOT_HTTP_SOURCES="http://project-atlas-gmsb.web.cern.ch/project-atlas-gmsb/pilotcode-dev.tar.gz"
       PILOT_TYPE=PT
@@ -127,7 +127,7 @@ function get_pilot() {
       PILOT_HTTP_SOURCES="http://pandaserver.cern.ch:25085/cache/pilot/pilotcode-rc.tar.gz"
       PILOT_TYPE=RC
     else
-      log "Normal production pilot will be used" 
+      log "Normal production pilot will be used"
       PILOT_HTTP_SOURCES="http://pandaserver.cern.ch:25085/cache/pilot/pilotcode-PICARD.tar.gz"
       PILOT_TYPE=PR
     fi
@@ -177,10 +177,45 @@ function monexiting() {
   fi
 }
 
-function handler() {
+function term_handler() {
   log "Caught SIGTERM, sending to pilot PID:$pilotpid"
   err "Caught SIGTERM, sending to pilot PID:$pilotpid"
-  kill -15 $pilotpid
+  kill -s SIGTERM $pilotpid
+  wait
+}
+
+function quit_handler() {
+  log "Caught SIGQUIT, sending to pilot PID:$pilotpid"
+  err "Caught SIGQUIT, sending to pilot PID:$pilotpid"
+  kill -s SIGQUIT $pilotpid
+  wait
+}
+
+function segv_handler() {
+  log "Caught SIGSEGV, sending to pilot PID:$pilotpid"
+  err "Caught SIGSEGV, sending to pilot PID:$pilotpid"
+  kill -s SIGSEGV $pilotpid
+  wait
+}
+
+function xcpu_handler() {
+  log "Caught SIGXCPU, sending to pilot PID:$pilotpid"
+  err "Caught SIGXCPU, sending to pilot PID:$pilotpid"
+  kill -s SIGXCPU $pilotpid
+  wait
+}
+
+function usr1_handler() {
+  log "Caught SIGUSR1, sending to pilot PID:$pilotpid"
+  err "Caught SIGUSR1, sending to pilot PID:$pilotpid"
+  kill -s SIGUSR1 $pilotpid
+  wait
+}
+
+function bus_handler() {
+  log "Caught SIGBUS, sending to pilot PID:$pilotpid"
+  err "Caught SIGBUS, sending to pilot PID:$pilotpid"
+  kill -s SIGBUS $pilotpid
   wait
 }
 
@@ -193,11 +228,11 @@ function main() {
   # added datetime to stdout/err
   # ignore TMPDIR, just run in landing directory
   # removed function set_limits, now done in pilot
-  # 
-  
+  #
+
   echo "This is ATLAS pilot wrapper version: $VERSION"
   echo "Please send development requests to p.love@lancaster.ac.uk"
-  
+
   log "==== wrapper output BEGIN ===="
   # notify monitoring, job running
   monrunning
@@ -216,7 +251,7 @@ function main() {
   echo "cmd: $0 $myargs"
   log "wrapper getopts: -h $hflag -p $pflag -s $sflag -u $uflag -w $wflag"
   echo
-  
+
   # If we have TMPDIR defined, then move into this directory
   # If it's not defined, then stay where we are
   # to be refactored away, always use pwd
@@ -235,10 +270,10 @@ function main() {
     log "Exiting."
     exit 1
   fi
-    
+
   log "cd $temp"
   cd $temp
-  
+
   # Try to get pilot code...
   get_pilot
   if [[ "$?" -ne 0 ]]; then
@@ -246,38 +281,38 @@ function main() {
     err "FATAL: failed to retrieve pilot code"
     exit 1
   fi
-  
+
   echo "---- JOB Environment ----"
   printenv | sort
   echo
-  
+
   echo "---- Shell process limits ----"
   ulimit -a
   echo
-  
+
   echo "---- Proxy Information ----"
   voms-proxy-info -all
   echo
-  
+
   # refactor
-  # Unset https proxy - this is known to be broken 
+  # Unset https proxy - this is known to be broken
   # and is usually unnecessary on the ports used by
   # the panda servers
   unset https_proxy HTTPS_PROXY
-  
+
   # refactor
   # Set LFC api timeouts
   export LFC_CONNTIMEOUT=60
   export LFC_CONRETRY=2
   export LFC_CONRETRYINT=60
-  
+
   # refactor
   # Find the best python to run with
   echo "---- Searching for LFC compatible python ----"
   find_lfc_compatible_python
   echo "Using $pybin for python LFC compatibility"
   echo
-  
+
   # OSG or EGEE?
   # refactor, remove or handle OSG
   echo "---- VO software area ----"
@@ -293,7 +328,7 @@ function main() {
     exit 1
     ATLAS_AREA=/bad_site
   fi
-  
+
   ls -l $ATLAS_AREA/
   echo
   if [ -e $ATLAS_AREA/tags ]; then
@@ -305,7 +340,7 @@ function main() {
     exit 1
   fi
   echo
-  
+
   # setup DDM client
   echo "---- DDM setup ----"
   if [ -f /cvmfs/atlas.cern.ch/repo/sw/ddm/latest/setup.sh ]; then
@@ -321,7 +356,7 @@ function main() {
     exit 1
   fi
   echo
-  
+
   echo "---- Local ATLAS setup ----"
   echo "Looking for $ATLAS_AREA/local/setup.sh"
   if [ -f $ATLAS_AREA/local/setup.sh ]; then
@@ -332,19 +367,41 @@ function main() {
       err "refactor: this site has no local setup $ATLAS_AREA/local/setup.sh"
   fi
   echo
-  
+
+  echo "---- Prepare DDM ToACache ----"
+  echo "Looking for $ATLAS_AREA/local/etc/ToACache.py"
+  TOACACHE="$ATLAS_AREA/local/etc/ToACache.py"
+  TOALCACHE="/var/tmp/.dq2$(whoami)/ToACache.py"
+  if [ -s "$TOACACHE" ] ; then
+    if [ -L "$TOALCACHE" ] ; then
+      log "Link to $TOALCACHE already in place, touching it to extend the vaildity"
+      touch -h $TOALCACHE
+    else
+      log "Linking $TOACACHE to $TOALCACHE"
+      rm -f $TOALCACHE && ln -s $TOACACHE $TOALCACHE
+    fi
+  else
+    log "Local $TOACACHE not found (or zero size), continuing"
+  fi
+  echo
+
   # This is where the pilot rundirectory is - maybe left after job finishes
   scratch=$(pwd)
-  
+
   echo "---- Ready to run pilot ----"
   # If we know the pilot type then set this
   if [ -n "$PILOT_TYPE" ]; then
-      pilot_args="-d $scratch $myargs -i $PILOT_TYPE"
+      pilot_args="-d $scratch $myargs -i $PILOT_TYPE -G 1"
   else
-      pilot_args="-d $scratch $myargs"
+      pilot_args="-d $scratch $myargs -G 1"
   fi
-  
-  trap handler SIGTERM
+
+  trap term_handler SIGTERM
+  trap quit_handler SIGQUIT
+  trap segv_handler SIGSEGV
+  trap xcpu_handler SIGXCPU
+  trap usr1_handler SIGUSR1
+  trap bus_handler SIGBUS
   cmd="$pybin pilot.py $pilot_args"
   echo cmd: $cmd
   log "==== pilot stdout BEGIN ===="
@@ -355,7 +412,7 @@ function main() {
   log "==== pilot stdout END ===="
   log "==== wrapper stdout RESUME ===="
   log "Pilot exit status: $pilotrc"
-  
+
   # notify monitoring, job exiting, capture the pilot exit status
   if [ -f STATUSCODE ]; then
     scode=$(cat STATUSCODE)
@@ -364,12 +421,12 @@ function main() {
   fi
   log "STATUSCODE: $scode"
   monexiting $scode
-  
+
   # Now wipe out our temp run directory, so as not to leave rubbish lying around
   cd $startdir
   log "cleanup: rm -rf $temp"
   rm -fr $temp
-  
+
   log "==== wrapper stdout END ===="
   exit
 }
