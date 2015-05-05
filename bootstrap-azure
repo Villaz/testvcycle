@@ -9,7 +9,6 @@ mkdir -p /etc/machineoutputs
 
 (
 
-
 echo Output of VM bootstrap for `hostname`
 
 # Create a shutdown_message if ACPI shutdown signal received
@@ -39,17 +38,6 @@ attr -g proxy /cvmfs/atlas.cern.ch/
 # Scratch tmp for TMPDIR
 mkdir -p /scratch/tmp
 chmod ugo+rwxt /scratch/tmp
-
-# ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
-rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
-rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
-       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
-
-GMONDPORT=`python -c "import requests ; print requests.get('http://egi-agm.cern.ch/egi-atlas-gmond-cluster-cfg.json', timeout=60).json()['$3']['Port']"`
-if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
-  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$3/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/testvcycle/gmond.conf > /etc/ganglia/gmond.conf
-  service gmond restart
-fi
 
 # Get CA certs from cvmfs
 ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
