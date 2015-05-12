@@ -1,0 +1,144 @@
+#!/bin/sh
+#
+# bootstrap script - runs as root
+#
+# andrew.mcnab@cern.ch, March-May 2014
+# luis.villazon.esteban@cern.ch May 2014
+#
+
+# Just in case it doesn't exist
+mkdir -p /etc/machineoutputs
+
+(
+
+
+
+wget https://bootstrap.pypa.io/get-pip.py
+python get-pip.py
+pip install requests
+
+echo Output of VM bootstrap for `hostname`
+
+# create hostkey and certkey
+cp /root/hostkey.pem /root/combined.pem
+export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
+export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
+export numberLinesPub=`expr $numberLines - $numberLinesPriv`
+head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
+tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
+chmod 600 /root/hostkey.pem
+rm /root/combined.pem
+
+ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
+
+# vm-heartbeat will be touched every 5 minutes
+touch /etc/machineoutputs/vm-heartbeat
+
+# Create a shutdown_message if ACPI shutdown signal received
+cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
+
+# Needed for POSIX semaphores
+mount /dev/shm
+chmod ugo+rwxt /dev/shm
+
+
+mkdir /etc/machinefeatures /etc/jobfeatures
+chmod ugo+rwxt /scratch
+
+# We swap on the logical partition (doesn't work on aufs)
+fallocate -l 4g /scratch/swapfile
+chmod 0600 /scratch/swapfile
+mkswap /scratch/swapfile
+swapon /scratch/swapfile
+
+# Bigger cvmfs cache, on the logical partition
+mkdir -p /scratch/cvmfs-cache
+echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
+/usr/bin/cvmfs_config reload
+attr -g proxy /mnt/.ro
+attr -g proxy /cvmfs/atlas.cern.ch/
+
+# Scratch tmp for TMPDIR
+mkdir -p /scratch/tmp
+chmod ugo+rwxt /scratch/tmp
+
+touch /etc/machineoutputs/athena-heartbeat
+echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
+
+#start crond
+/etc/init.d/crond start
+
+# ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
+rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
+rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
+       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
+
+GMONDPORT=`python -c "import requests ; print requests.get('http://egi-agm.cern.ch/egi-atlas-gmond-cluster-cfg.json', timeout=60).json()['$3']['Port']"`
+if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
+  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$3/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/testvcycle/gmond.conf > /etc/ganglia/gmond.conf
+  service gmond restart
+fi
+
+# Get CA certs from cvmfs
+ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
+
+# Set up an account for the pilot to run as
+/usr/sbin/useradd -b /scratch atlas
+cd /scratch/atlas
+
+if [ -r /etc/vmtypefiles/userproxy.pem ] ; then
+ # Use proxy in NFS directory if present
+ cp /etc/vmtypefiles/userproxy.pem /tmp
+else
+ # Otherwise try myproxy
+ . /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
+ unset X509_USER_PROXY
+ export X509_USER_CERT=/root/hostcert.pem
+ export X509_USER_KEY=/root/hostkey.pem
+ # Myproxy username is "Panda queue name:X.509 DN"
+ myproxyname=`openssl x509 -in /root/hostcert.pem -noout -subject | sed "s/^subject= /$1:/"`
+ echo $myproxyname
+ echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -o /tmp/userproxy.pem -t 96
+ export X509_USER_PROXY=/tmp/userproxy.pem
+ voms-proxy-info --all
+ if [ $? != 0 ] ; then
+  echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
+  #/sbin/shutdown -h now
+  #sleep 1234567890
+ fi
+ unset X509_USER_CERT X509_USER_KEY
+fi
+
+chown atlas.atlas /tmp/userproxy.pem
+chmod 0600 /tmp/userproxy.pem
+
+# user_data passes these to bootstrap on the command line
+echo "export SITE_NAME=$1"		 >/scratch/atlas/vm-pilot-extras
+echo "export VO_ATLAS_DEFAULT_SE=$2"	>>/scratch/atlas/vm-pilot-extras
+echo "export DPM_HOST=$2"		>>/scratch/atlas/vm-pilot-extras
+echo "export DPNS_HOST=$2"		>>/scratch/atlas/vm-pilot-extras
+echo "export HTTP_LOGS=$4"		>>/scratch/atlas/vm-pilot-extras
+chown atlas.atlas /scratch/atlas/vm-pilot-extras
+
+# We use sudo to run the vm-pilot wrapper
+echo 'Defaults !requiretty' >>/etc/sudoers
+echo 'Defaults visiblepw'   >>/etc/sudoers
+
+node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t start
+# Run vm-pilot
+touch /etc/machineoutputs/vm-pilot.err
+/usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
+
+# Tell Vac what the outcome was
+/var/spool/checkout/testvcycle/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.out >/etc/machineoutputs/shutdown_message
+
+/bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
+           /etc/machineoutputs
+
+
+
+META_MACHINEOUTPUTS='http://data-bridge-test.cern.ch/myfed/atlas-boinc/moutputs/'
+curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file "$i" "$META_MACHINEOUTPUTS/" -k -L
+
+node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t end
+) >/etc/machineoutputs/vm-pilot.log 2>&1
