@@ -238,7 +238,8 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
 fi
 
 META_MACHINEOUTPUTS='http://data-bridge-test.cern.ch/myfed/atlas-boinc/moutputs/'
-curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file "$i" "$META_MACHINEOUTPUTS/" -k -L 
+tar czf "$hostnamevcycle-outputs.tar.gz" /etc/machineoutputs
+curl  --upload-file "$hostnamevcycle-outputs.tar.gz" "$META_MACHINEOUTPUTS/" -k -L 
 
 end=$(date +%s)
 diff=$((end-start))
