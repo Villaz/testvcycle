@@ -43,6 +43,7 @@ chmod ugo+rwxt /dev/shm
 
 
 mkdir /etc/machinefeatures /etc/jobfeatures
+mkdir -p /scratch
 chmod ugo+rwxt /scratch
 
 # We swap on the logical partition (doesn't work on aufs)

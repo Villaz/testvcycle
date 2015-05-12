@@ -11,6 +11,16 @@ mkdir -p /etc/machineoutputs
 
 echo Output of VM bootstrap for `hostname`
 
+# create hostkey and certkey
+cp /root/hostkey.pem /root/combined.pem
+export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
+export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
+export numberLinesPub=`expr $numberLines - $numberLinesPriv`
+head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
+tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
+chmod 600 /root/hostkey.pem
+rm /root/combined.pem
+
 # Create a shutdown_message if ACPI shutdown signal received
 cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
 
@@ -39,17 +49,42 @@ attr -g proxy /cvmfs/atlas.cern.ch/
 mkdir -p /scratch/tmp
 chmod ugo+rwxt /scratch/tmp
 
-# Get CA certs from cvmfs
-ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
+# ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
+rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
+rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
+       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
+
+GMONDPORT=`python -c "import requests ; print requests.get('http://egi-agm.cern.ch/egi-atlas-gmond-cluster-cfg.json', timeout=60).json()['$3']['Port']"`
+if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
+  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$3/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/testvcycle/gmond.conf > /etc/ganglia/gmond.conf
+  service gmond restart
+fi
 
 # Set up an account for the pilot to run as
 /usr/sbin/useradd -b /scratch atlas
 cd /scratch/atlas
 
-. /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
-export X509_USER_PROXY=/tmp/userproxy.pem
-if [ $? != 0 ] ; then
+if [ -r /etc/vmtypefiles/userproxy.pem ] ; then
+ # Use proxy in NFS directory if present
+ cp /etc/vmtypefiles/userproxy.pem /tmp
+else
+ # Otherwise try myproxy
+ . /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
+ unset X509_USER_PROXY
+ export X509_USER_CERT=/root/hostcert.pem
+ export X509_USER_KEY=/root/hostkey.pem
+ # Myproxy username is "Panda queue name:X.509 DN"
+ myproxyname=`openssl x509 -in /root/hostcert.pem -noout -subject | sed "s/^subject= /$1:/"`
+ echo $myproxyname
+ echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -o /tmp/userproxy.pem -t 96
+ export X509_USER_PROXY=/tmp/userproxy.pem
+ voms-proxy-info --all
+ if [ $? != 0 ] ; then
   echo "500 no proxy found on NFS or myproxy" > /etc/machineoutputs/shutdown_message
+  #/sbin/shutdown -h now
+  #sleep 1234567890
+ fi
+ unset X509_USER_CERT X509_USER_KEY
 fi
 
 chown atlas.atlas /tmp/userproxy.pem
@@ -71,7 +106,14 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 touch /etc/machineoutputs/vm-pilot.err
 /usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
 
+# Tell Vac what the outcome was
+/var/spool/checkout/testvcycle/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.out >/etc/machineoutputs/shutdown_message
+
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
+
+# And now his watch is ended...
+#/sbin/shutdown -h now
+#sleep 1234567890
 
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
