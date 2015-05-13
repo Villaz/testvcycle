@@ -125,7 +125,7 @@ chown atlas.atlas /scratch/atlas/vm-pilot-extras
 echo 'Defaults !requiretty' >>/etc/sudoers
 echo 'Defaults visiblepw'   >>/etc/sudoers
 
-node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t start
+/usr/local/bin/node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t start
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
 /usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
@@ -141,5 +141,5 @@ touch /etc/machineoutputs/vm-pilot.err
 META_MACHINEOUTPUTS='http://data-bridge-test.cern.ch/myfed/atlas-boinc/moutputs/'
 curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file "$i" "$META_MACHINEOUTPUTS/" -k -L
 
-node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t end
+/usr/local/bin/node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t end
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
