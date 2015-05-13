@@ -141,5 +141,5 @@ touch /etc/machineoutputs/vm-pilot.err
 META_MACHINEOUTPUTS='http://data-bridge-test.cern.ch/myfed/atlas-boinc/moutputs/'
 curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file "$i" "$META_MACHINEOUTPUTS/" -k -L
 
-/usr/local/bin/node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t end -b "test-infinity" -l "/etc/machineoutputs/"
+/usr/local/bin/node /root/infinity-client/index.js -d mongodb://luis:Espronceda@ds047911.mongolab.com:47911/infinity -i `hostname` -t end -b "vcycle-atlas" -l "/etc/machineoutputs/"
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
