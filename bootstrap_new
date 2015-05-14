@@ -47,7 +47,8 @@ mkdir -p /scratch
 chmod ugo+rwxt /scratch
 
 # We swap on the logical partition (doesn't work on aufs)
-fallocate -l 4g /scratch/swapfile
+dd if=/dev/zero of=/scratch/swapfile bs=1024 count=4194304
+#fallocate -l 4g /scratch/swapfile
 chmod 0600 /scratch/swapfile
 mkswap /scratch/swapfile
 swapon /scratch/swapfile
@@ -136,10 +137,6 @@ touch /etc/machineoutputs/vm-pilot.err
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
 
-
-
-META_MACHINEOUTPUTS='http://data-bridge-test.cern.ch/myfed/atlas-boinc/moutputs/'
-curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file "$i" "$META_MACHINEOUTPUTS/" -k -L
 
 /usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t end -l "/etc/machineoutputs/"
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
