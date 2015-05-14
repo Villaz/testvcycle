@@ -41,14 +41,58 @@ cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
 mount /dev/shm
 chmod ugo+rwxt /dev/shm
 
-
-mkdir /etc/machinefeatures /etc/jobfeatures
+# Get the big 40G logical partition as /scratch
 mkdir -p /scratch
+if [ -b /dev/vdb1 -a -b /dev/vdb2 ] ; then
+ # Openstack at CERN with cvm* flavor?
+ # vda1 is boot image, vdb1 is root partition, vdb2 is unformatted
+ mkfs -q -t ext4 /dev/vdb2
+ mount /dev/vdb2 /scratch
+elif [ -b /dev/vdb1 ] ; then
+ # Openstack at CERN with hep* flavor?
+ # vda1 is boot image, vdb1 is root partition, and no vdb2
+ # Since boot image is small, can use rest of vda for /scratch
+ echo -e 'n\np\n2\n\n\nw\n'| fdisk /dev/vda
+ mkfs -q -t ext4 /dev/vda2
+ mount /dev/vda2 /scratch
+elif [ -b /dev/vdb ] ; then
+ mkfs -q -t ext4 /dev/vdb
+ mount /dev/vdb /scratch
+elif [ -b /dev/sdb ] ; then
+ mkfs -q -t ext4 /dev/sdb
+ mount /dev/sdb /scratch
+elif [ -b /dev/hdb ] ; then
+ mkfs -q -t ext4 /dev/hdb
+ mount /dev/hdb /scratch
+else
+ echo "500 no vdb/hdb/sdb block device for /scratch" #> /etc/machineoutputs/shutdown_message
+ #/sbin/shutdown -h now
+ #sleep 1234567890
+fi
+
+if [ ! -d /etc/machinefeatures ] ; then
+  # No NFS mounted machine/job features? OpenStack rather than Vac?
+
+  mkdir /etc/machinefeatures /etc/jobfeatures
+
+  if [ `hostname` != `hostname -s` ] ; then
+    hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
+  fi
+
+  #export META_JOBFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/jobfeatures"
+  #export META_MACHINEFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/machinefeatures"
+  export META_MACHINEOUTPUTS="http://vcycle-manager-lv.cern.ch/vcycle-cgi"
+  export META_MACHINESTATS="http://vcycle-manager-lv.cern.ch/vcycle-stats"
+  #( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
+  #( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
+
+fi
+/usr/bin/curl -XPUT "$META_MACHINESTATS/boot/$3/$boottime"
+# anyone can create directories there
 chmod ugo+rwxt /scratch
 
 # We swap on the logical partition (doesn't work on aufs)
-dd if=/dev/zero of=/scratch/swapfile bs=1024 count=4194304
-#fallocate -l 4g /scratch/swapfile
+fallocate -l 4g /scratch/swapfile
 chmod 0600 /scratch/swapfile
 mkswap /scratch/swapfile
 swapon /scratch/swapfile
@@ -66,6 +110,22 @@ chmod ugo+rwxt /scratch/tmp
 
 touch /etc/machineoutputs/athena-heartbeat
 echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
+
+if [ "$META_MACHINEOUTPUTS" == "" ] ; then
+  # vm-heartbeat is writtenevery 5 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >>/etc/crontab
+
+else
+  # put vm-heartbeat on MJF server every 10 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
+
+  /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
+  /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
+  echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+fi
 
 #start crond
 /etc/init.d/crond start
@@ -126,7 +186,12 @@ chown atlas.atlas /scratch/atlas/vm-pilot-extras
 echo 'Defaults !requiretty' >>/etc/sudoers
 echo 'Defaults visiblepw'   >>/etc/sudoers
 
+## vm-heartbeat is touched every 5 minutes but only create cron now bootstrap set up is done
+#touch /etc/machineoutputs/vm-heartbeat
+#echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+
 /usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t start
+
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
 /usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
