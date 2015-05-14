@@ -31,8 +31,6 @@ rm /root/combined.pem
 
 ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
 
-# vm-heartbeat will be touched every 5 minutes
-touch /etc/machineoutputs/vm-heartbeat
 
 # Create a shutdown_message if ACPI shutdown signal received
 cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
@@ -48,6 +46,7 @@ if [ -b /dev/vdb1 -a -b /dev/vdb2 ] ; then
  # vda1 is boot image, vdb1 is root partition, vdb2 is unformatted
  mkfs -q -t ext4 /dev/vdb2
  mount /dev/vdb2 /scratch
+ echo "Mounted /dev/vdb2"
 elif [ -b /dev/vdb1 ] ; then
  # Openstack at CERN with hep* flavor?
  # vda1 is boot image, vdb1 is root partition, and no vdb2
@@ -55,16 +54,22 @@ elif [ -b /dev/vdb1 ] ; then
  echo -e 'n\np\n2\n\n\nw\n'| fdisk /dev/vda
  mkfs -q -t ext4 /dev/vda2
  mount /dev/vda2 /scratch
+echo "Mounted /dev/vda2"
 elif [ -b /dev/vdb ] ; then
  mkfs -q -t ext4 /dev/vdb
  mount /dev/vdb /scratch
+ echo "Mounted /dev/vdb"
 elif [ -b /dev/sdb ] ; then
  mkfs -q -t ext4 /dev/sdb
  mount /dev/sdb /scratch
+ echo "Mounted /dev/sdb"
 elif [ -b /dev/hdb ] ; then
  mkfs -q -t ext4 /dev/hdb
  mount /dev/hdb /scratch
+ echo "Mounted /dev/hdb"
 else
+ echo "no block device for /scratch"
+ ll /dev
  echo "500 no vdb/hdb/sdb block device for /scratch" #> /etc/machineoutputs/shutdown_message
  #/sbin/shutdown -h now
  #sleep 1234567890
@@ -79,15 +84,10 @@ if [ ! -d /etc/machinefeatures ] ; then
     hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
   fi
 
-  #export META_JOBFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/jobfeatures"
-  #export META_MACHINEFEATURES="http://vcycle-manager-lv.cern.ch/`hostname`/machinefeatures"
   export META_MACHINEOUTPUTS="http://vcycle-manager-lv.cern.ch/vcycle-cgi"
   export META_MACHINESTATS="http://vcycle-manager-lv.cern.ch/vcycle-stats"
-  #( cd /etc/jobfeatures     ; wget -nd -r --no-parent --reject='index.html*' $META_JOBFEATURES/     )
-  #( cd /etc/machinefeatures ; wget -nd -r --no-parent --reject='index.html*' $META_MACHINEFEATURES/ )
-
 fi
-/usr/bin/curl -XPUT "$META_MACHINESTATS/boot/$3/$boottime"
+
 # anyone can create directories there
 chmod ugo+rwxt /scratch
 
@@ -111,23 +111,8 @@ chmod ugo+rwxt /scratch/tmp
 touch /etc/machineoutputs/athena-heartbeat
 echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
 
-if [ "$META_MACHINEOUTPUTS" == "" ] ; then
-  # vm-heartbeat is writtenevery 5 minutes
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
-  echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
-  echo "* * * * * root /usr/bin/python -c \"from pymongo import MongoClient;client = MongoClient('mongodb://vcycle:vcycle@ds047911.mongolab.com:47911/infinity');db = client['infinity'];obj=db.servers.find_one({'hostname': '$host'});obj['heartbeat']=$(date +%s);db.servers.save(obj)\"" >>/etc/crontab
-
-else
-  # put vm-heartbeat on MJF server every 10 minutes
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
-
-  /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
-  /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
-  echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
-fi
-
 #start crond
+/etc/init.d/crond status
 /etc/init.d/crond start
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
@@ -202,6 +187,6 @@ touch /etc/machineoutputs/vm-pilot.err
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
 
-
+cat /var/log/syslog | grep CRON > "/etc/machineoutputs/cron.log"
 /usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t end -l "/etc/machineoutputs/"
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
