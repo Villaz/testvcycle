@@ -16,6 +16,8 @@ mkdir -p /etc/machineoutputs
 wget https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
 pip install requests
+yum install -y php-xml
+yum install -y php-posix
 
 echo Output of VM bootstrap for `hostname`
 
@@ -178,8 +180,6 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 /usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t start
 
 #Run tests
-yum install -y php-xml
-yum install -y php-posix
 cd /root
 wget https://dl.dropboxusercontent.com/u/19259833/phoronix-test-suite-5.6.0.tar.gz
 tar -zxf phoronix-test-suite-5.6.0.tar.gz
