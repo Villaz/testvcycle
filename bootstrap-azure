@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # bootstrap script - runs as root
-#
+# andrew.mcnab@cern.ch, March-May 2014
 # luis.villazon.esteban@cern.ch, May 2015
 #
 
@@ -50,7 +50,7 @@ mkdir -p /scratch/tmp
 chmod ugo+rwxt /scratch/tmp
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
-rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
+rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad
 rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
        http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
 
@@ -102,6 +102,8 @@ chown atlas.atlas /scratch/atlas/vm-pilot-extras
 echo 'Defaults !requiretty' >>/etc/sudoers
 echo 'Defaults visiblepw'   >>/etc/sudoers
 
+/usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t start
+
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
 /usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
@@ -112,8 +114,6 @@ touch /etc/machineoutputs/vm-pilot.err
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
 
-# And now his watch is ended...
-#/sbin/shutdown -h now
-#sleep 1234567890
+/usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t end -l "/etc/machineoutputs/"
 
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
