@@ -3,7 +3,7 @@
 # bootstrap script - runs as root
 #
 # andrew.mcnab@cern.ch, March-May 2014
-# luis.villazon.esteban@cern.ch May 2014
+# luis.villazon.esteban@cern.ch May 2015
 #
 
 # Just in case it doesn't exist

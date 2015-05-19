@@ -42,6 +42,19 @@ swapon /scratch/swapfile
 mkdir -p /scratch/cvmfs-cache
 echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
 /usr/bin/cvmfs_config reload
+
+mkdir -p /cvmfs/atlas.cern.ch
+mkdir -p /cvmfs/atlas-condb.cern.ch
+mkdir -p /cvmfs/atlas-nightlies.cern.ch
+mkdir -p /cvmfs/sft.cern.ch
+mkdir -p /cvmfs/grid.cern.ch
+
+mount -t cvmfs atlas.cern.ch /cvmfs/atlas.cern.ch
+mount -t cvmfs atlas-condb.cern.ch /cvmfs/atlas-condb.cern.ch
+mount -t cvmfs atlas-nightlies.cern.ch /cvmfs/atlas-nightlies.cern.ch
+mount -t cvmfs sft.cern.ch /cvmfs/sft.cern.ch
+mount -t cvmfs grid.cern.ch /cvmfs/grid.cern.ch
+
 attr -g proxy /mnt/.ro
 attr -g proxy /cvmfs/atlas.cern.ch/
 
@@ -50,7 +63,7 @@ mkdir -p /scratch/tmp
 chmod ugo+rwxt /scratch/tmp
 
 # ATLAS Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
-rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad
+rpm --nodeps -e ganglia ganglia-gmond
 rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
        http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
 
