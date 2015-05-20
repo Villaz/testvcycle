@@ -25,6 +25,8 @@ echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/e
 
 # Get CA certs from cvmfs
 ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
+. /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
+export X509_USER_PROXY=/tmp/userproxy.pem
 
 # Set up an account for the pilot to run as
 /usr/sbin/useradd -b /scratch atlas
