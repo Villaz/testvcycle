@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# bootstrap script - runs as root
+#
+# andrew.mcnab@cern.ch, March-May 2014
+# luis.villazon.esteban@cern.ch May 2015
+#
+
+# Just in case it doesn't exist
+mkdir -p /etc/machineoutputs
+
+(
+
+echo Output of VM bootstrap for `hostname`
+
+# Create a shutdown_message if ACPI shutdown signal received
+cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
+
+# Needed for POSIX semaphores
+mount /dev/shm
+chmod ugo+rwxt /dev/shm
+
+mkdir /etc/machinefeatures /etc/jobfeatures
+
+touch /etc/machineoutputs/athena-heartbeat
+echo '*/5 * * * * root /var/spool/checkout/testvcycle/make-athena-heartbeat' >/etc/cron.d/athena-heartbeat
+
+# Get CA certs from cvmfs
+ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
+
+# Set up an account for the pilot to run as
+/usr/sbin/useradd -b /scratch atlas
+cd /scratch/atlas
+
+chown atlas.atlas /tmp/userproxy.pem
+chmod 0600 /tmp/userproxy.pem
+
+# user_data passes these to bootstrap on the command line
+echo "export SITE_NAME=$1"		 >/scratch/atlas/vm-pilot-extras
+echo "export VO_ATLAS_DEFAULT_SE=$2"	>>/scratch/atlas/vm-pilot-extras
+echo "export DPM_HOST=$2"		>>/scratch/atlas/vm-pilot-extras
+echo "export DPNS_HOST=$2"		>>/scratch/atlas/vm-pilot-extras
+echo "export HTTP_LOGS=$4"		>>/scratch/atlas/vm-pilot-extras
+chown atlas.atlas /scratch/atlas/vm-pilot-extras
+
+# We use sudo to run the vm-pilot wrapper
+echo 'Defaults !requiretty' >>/etc/sudoers
+echo 'Defaults visiblepw'   >>/etc/sudoers
+
+
+# Run vm-pilot
+touch /etc/machineoutputs/vm-pilot.err
+/usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
+
+# Tell Vac what the outcome was
+/var/spool/checkout/testvcycle/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.out >/etc/machineoutputs/shutdown_message
+
+/bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
+           /etc/machineoutputs
+
+) >/etc/machineoutputs/vm-pilot.log 2>&1
