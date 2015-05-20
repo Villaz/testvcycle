@@ -9,8 +9,6 @@
 # Just in case it doesn't exist
 mkdir -p /etc/machineoutputs
 
-(
-
 echo Output of VM bootstrap for `hostname`
 
 # Create a shutdown_message if ACPI shutdown signal received
@@ -57,5 +55,3 @@ touch /etc/machineoutputs/vm-pilot.err
 
 /bin/cp -f /scratch/tmp/*/pilot3/*/pilotlog.txt \
            /etc/machineoutputs
-
-) >/etc/machineoutputs/vm-pilot.log 2>&1
