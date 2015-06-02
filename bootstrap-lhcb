@@ -170,7 +170,7 @@ mkdir -p /opt/glite/sbin
 cp $CONTEXTDIR/glexec /opt/glite/sbin/glexec
 chmod ugo+x /opt/glite/sbin/glexec
 
-/usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t start
+/usr/bin/node /usr/client/index.js -i `hostname` -t start
 
 # Now run the pilot script, possibly with the IaaS metadata updated VM_UUID
 /usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=CLOUD.Azure.ch --ce-name=vcycle-egi-01.cern.ch --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1
