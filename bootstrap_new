@@ -193,5 +193,5 @@ touch /etc/machineoutputs/vm-pilot.err
 cat /var/log/boot.log
 ll /var/log
 cat /var/log/syslog | grep CRON > "/etc/machineoutputs/cron.log"
-/usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t end -l "/etc/machineoutputs/"
+#/usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t end -l "/etc/machineoutputs/"
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
