@@ -1,0 +1,199 @@
+#!/bin/sh
+#
+# This is run as root at the end of /var/lib/hepix/context/epilog.sh
+#
+# One parameter: DIRAC site name (eg VAC.Example.cc)
+# 
+#  Andrew.McNab@cern.ch - adapted from GridPP DIRAC VM, April 2014
+#
+
+# Just in case it doesn't exist
+mkdir -p /etc/machineoutputs
+
+(
+
+date --utc +"%Y-%m-%d %H:%M:%S %Z vm-bootstrap vm-bootstrap Start bootstrap on `hostname`"
+
+RAWARGS="$@"
+
+for i in "$@"
+do
+case $i in
+    --dirac-site=*)
+    DIRAC_SITE="${i#*=}"
+    ;;
+    --vm-uuid=*)
+    VM_UUID=`echo "${i#*=}" | sed 's/#.*$//'`
+    ;;
+    --cvmfs-proxy=*)
+    cvmfs_proxy=`echo "${i#*=}" | sed 's/#.*$//'`
+    ;;
+    *)
+    # unknown option
+    ;;
+esac
+done
+
+# We might be running from cvmfs or from /var/spool/checkout
+export CONTEXTDIR=`readlink -f \`dirname $0\``
+date --utc +"%Y-%m-%d %H:%M:%S %Z vm-bootstrap CONTEXTDIR=$CONTEXTDIR"
+
+# Create a shutdown_message if ACPI shutdown signal received
+cp -f $CONTEXTDIR/power.sh /etc/acpi/actions/power.sh
+
+# Suppress annoying mails if 'mail' exists in local DNS
+sed -i 's/^mailhub=mail/mailhub=127.0.0.1/' /etc/ssmtp/ssmtp.conf
+
+if [ ! -d /etc/machinefeatures ] ; then
+  # No NFS mounted machine/job features? OpenStack rather than Vac?
+
+  mkdir /etc/machinefeatures /etc/jobfeatures
+  
+
+export META_MACHINEOUTPUTS="http://data-bridge-test.cern.ch/myfed/lhcb-boinc/moutputs/"
+
+
+
+  if [ `hostname` != `hostname -s` ] ; then
+    hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
+  fi
+ 
+fi
+
+export VM_UUID='dummy-vm-id'
+
+# Once we have read the metadata, stop any user process reading it later
+/sbin/iptables -A OUTPUT -d 169.254.169.254 -p tcp --dport 80 -j DROP 
+
+if [ -r /etc/machinefeatures/syslog ] ; then
+ echo '*.* @'`cat /etc/machinefeatures/syslog` > /etc/rsyslog.d/vm.conf
+ /sbin/service rsyslog restart
+fi
+
+# Get the big 40G logical partition as /scratch
+mkdir -p /scratch
+
+# We rely on the hypervisor's disk I/O scheduling
+if [ -d /sys/block/vda/queue ]; then
+    echo 'noop' > /sys/block/vda/queue/scheduler
+fi
+if [ -d /sys/block/vdb/queue ]; then
+    echo 'noop' > /sys/block/vdb/queue/scheduler
+fi
+
+# anyone can create directories there
+chmod ugo+rwxt /scratch
+
+# Bigger cvmfs cache, on the logical partition
+mkdir -p /scratch/cvmfs-cache
+echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
+/usr/bin/cvmfs_config reload
+attr -g proxy /mnt/.ro
+attr -g proxy /cvmfs/lhcb.cern.ch/
+
+# Scratch tmp for TMPDIR
+mkdir -p /scratch/tmp
+chmod ugo+rwxt /scratch/tmp
+
+mountpoint /dev/shm
+if [ $? != 0 ] ; then
+  # Needed for POSIX semaphores and missing in CernVM 3
+  mount /dev/shm
+  chmod ugo+rwxt /dev/shm      
+fi
+
+if [ "$META_MACHINEOUTPUTS" == "" ] ; then
+  # vm-heartbeat is writtenevery 5 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo '*/5 * * * * root echo `cut -f1-3 -d" " /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+else
+  # put vm-heartbeat on MJF server every 5 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  /usr/bin/curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/vm-heartbeat"
+  echo -e "RANDOM_DELAY=9\n*/10 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+fi
+
+# We swap on the logical partition if no CernVM 2 swapfile
+# (cannot on CernVM 3 aufs filesystem)
+if [ ! -f /var/swap ] ; then
+  # Iff /scratch is ext4 can use:
+  fallocate -l 4g /scratch/swapfile
+  chmod 0600 /scratch/swapfile
+  mkswap /scratch/swapfile 
+  swapon /scratch/swapfile    
+fi
+
+sysctl vm.swappiness=0
+
+# WLCG/LHCb Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
+date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia remove'
+rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
+date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia wget'
+wget http://lhcbproject.web.cern.ch/lhcbproject/Operations/VM/libganglia-3.4.0-1.x86_64.rpm 
+wget http://lhcbproject.web.cern.ch/lhcbproject/Operations/VM/ganglia-gmond-3.4.0-1.x86_64.rpm 
+date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia install'
+rpm -i ganglia-gmond-3.4.0-1.x86_64.rpm libganglia-3.4.0-1.x86_64.rpm
+date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia done'
+
+GMONDPORT=`python -c "import requests ; print requests.get('http://lgm.cern.ch/lhcb-gmond-cluster-cfg.json', timeout=60).json()['$DIRAC_SITE']['Port']"`
+if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
+  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$DIRAC_SITE/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/gmond.conf > /etc/ganglia/gmond.conf
+  service gmond restart
+fi
+
+# Get CA certs from cvmfs
+rm -Rf /etc/grid-security
+ln -sf  /cvmfs/lhcb.cern.ch/etc/grid-security /etc/grid-security
+
+# Don't want to be doing this at 4 or 5am every day!
+rm -f /etc/cron.daily/mlocate.cron
+
+# Avoid age-old sudo problem
+echo 'Defaults !requiretty' >>/etc/sudoers
+echo 'Defaults visiblepw'   >>/etc/sudoers
+      
+# Create the dirac account to run the JobAgent
+/usr/sbin/useradd -b /scratch dirac
+
+cd /scratch/dirac
+
+mkdir -p /scratch/dirac/etc/grid-security
+cp /root/hostkey.pem /scratch/dirac/etc/grid-security
+chmod 0600 /scratch/dirac/etc/grid-security/hostkey.pem
+
+cp /root/hostkey.pem /scratch/dirac/etc/grid-security/hostcert.pem
+chmod 0600 /scratch/dirac/etc/grid-security/hostcert.pem
+
+chmod 0755 /scratch/dirac
+chown -R dirac.dirac /scratch/dirac
+
+# This can be removed when LHCbPilotCommands.py is fixed!
+mkdir -p /home/dirac/certs
+ln -sf /scratch/dirac/etc/grid-security/* /home/dirac/certs
+
+# add diracuser account that dirac can sudo to
+/usr/sbin/useradd -m -b /scratch diracuser
+echo 'Defaults>diracuser !requiretty'        >>/etc/sudoers
+echo 'Defaults>diracuser visiblepw'          >>/etc/sudoers
+echo 'Defaults>diracuser !env_reset'         >>/etc/sudoers
+echo 'dirac ALL = (diracuser) NOPASSWD: ALL' >>/etc/sudoers
+
+# install our glexec-style sudo wrapper
+mkdir -p /opt/glite/sbin
+cp $CONTEXTDIR/glexec /opt/glite/sbin/glexec
+chmod ugo+x /opt/glite/sbin/glexec
+
+# Now run the pilot script, possibly with the IaaS metadata updated VM_UUID
+/usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=CLOUD.Azure.eu --ce-name=vcycle-egi-01.cern.ch --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1
+
+$CONTEXTDIR/ParseJobAgentLog /etc/machineoutputs/vm-pilot.log > /etc/machineoutputs/shutdown_message
+
+cp -f /var/log/boot.log /var/log/dmesg /var/log/secure /var/log/messages* /etc/cvmfs/site.conf /etc/cvmfs/default.* /etc/machineoutputs
+
+if [ "$META_MACHINEOUTPUTS" != "" ] ; then
+    cd /etc/machineoutputs
+    tar -czf $(hostname).tgz *
+    curl --capath /etc/grid-security/certificates --cert /root/hostkey.pem --upload-file $(hostname).tgz "$META_MACHINEOUTPUTS/" -k -L
+fi 
+
+) >>/etc/machineoutputs/vm-bootstrap.log 2>&1
