@@ -41,9 +41,6 @@ date --utc +"%Y-%m-%d %H:%M:%S %Z vm-bootstrap CONTEXTDIR=$CONTEXTDIR"
 # Create a shutdown_message if ACPI shutdown signal received
 cp -f $CONTEXTDIR/power.sh /etc/acpi/actions/power.sh
 
-# Suppress annoying mails if 'mail' exists in local DNS
-sed -i 's/^mailhub=mail/mailhub=127.0.0.1/' /etc/ssmtp/ssmtp.conf
-
 if [ ! -d /etc/machinefeatures ] ; then
   # No NFS mounted machine/job features? OpenStack rather than Vac?
 
@@ -124,16 +121,6 @@ if [ ! -f /var/swap ] ; then
 fi
 
 sysctl vm.swappiness=0
-
-# WLCG/LHCb Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
-date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia remove'
-rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
-date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia wget'
-wget http://lhcbproject.web.cern.ch/lhcbproject/Operations/VM/libganglia-3.4.0-1.x86_64.rpm 
-wget http://lhcbproject.web.cern.ch/lhcbproject/Operations/VM/ganglia-gmond-3.4.0-1.x86_64.rpm 
-date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia install'
-rpm -i ganglia-gmond-3.4.0-1.x86_64.rpm libganglia-3.4.0-1.x86_64.rpm
-date --utc +'%Y-%m-%d %H:%M:%S %Z Ganglia done'
 
 GMONDPORT=`python -c "import requests ; print requests.get('http://lgm.cern.ch/lhcb-gmond-cluster-cfg.json', timeout=60).json()['$DIRAC_SITE']['Port']"`
 if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
