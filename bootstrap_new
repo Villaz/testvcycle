@@ -182,7 +182,7 @@ echo 'Y' | /usr/bin/phoronix-test-suite batch-run pts/build-linux-kernel
 
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
-/usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out 2>&1
+/usr/bin/sudo -n -u atlas /var/spool/checkout/testvcycle/vm-pilot >/etc/machineoutputs/vm-pilot.out
 
 # Tell Vac what the outcome was
 /var/spool/checkout/testvcycle/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.out >/etc/machineoutputs/shutdown_message
