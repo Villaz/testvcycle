@@ -16,8 +16,6 @@ mkdir -p /etc/machineoutputs
 wget https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
 pip install requests
-yum install -y php-xml
-yum install -y php-posix
 
 echo Output of VM bootstrap for `hostname`
 
@@ -167,18 +165,6 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 #echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
 
 /usr/local/bin/node /root/infinity-client/index.js -i `hostname` -t start
-
-#Run tests
-cd /root
-wget https://dl.dropboxusercontent.com/u/19259833/phoronix-test-suite-5.6.0.tar.gz
-tar -zxf phoronix-test-suite-5.6.0.tar.gz
-rm -rf phoronix-test-suite-5.6.0.tar.gz
-cd phoronix-test-suite
-./install-sh
-echo 'Y' | /usr/bin/phoronix-test-suite
-echo 'Y' | /usr/bin/phoronix-test-suite batch-install pts/build-linux-kernel
-echo 'Y' | /usr/bin/phoronix-test-suite batch-setup
-echo 'Y' | /usr/bin/phoronix-test-suite batch-run pts/build-linux-kernel
 
 # Run vm-pilot
 touch /etc/machineoutputs/vm-pilot.err
