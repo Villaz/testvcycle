@@ -144,7 +144,7 @@ chmod 400 /scratch/gwmspilot/vm-glidein-config
 cd /scratch/gwmspilot
 
 # Make a proxy
-. /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+. /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
 unset X509_USER_PROXY
 export X509_USER_CERT=/root/hostcert.pem
 export X509_USER_KEY=/root/hostkey.pem
