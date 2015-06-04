@@ -1,0 +1,278 @@
+#!/bin/sh
+#
+#  This is run as root at the end of /var/lib/hepix/context/epilog.sh
+#
+
+# Just in case it doesn't exist
+mkdir -p /etc/machineoutputs
+
+(
+
+date +"%b %d %H:%M:%S vm-bootstrap VM starts on `hostname`"
+
+# Unmount CVMFS, as we have already used it for the CA certs
+/usr/bin/cvmfs_config umount
+
+
+mountpoint /dev/shm
+if [ $? != 0 ] ; then
+  # Needed for POSIX semaphores and missing in CernVM 3
+  mount /dev/shm
+  chmod ugo+rwxt /dev/shm      
+fi
+
+
+if [ ! -d /etc/machinefeatures ] ; then
+  # No NFS mounted machine/job features? OpenStack rather than Vac?
+
+  mkdir /etc/machinefeatures /etc/jobfeatures
+  
+  if [ `hostname` != `hostname -s` ] ; then
+    hostname `hostname -s`.`grep '^ *search ' /etc/resolv.conf | head -1 | sed 's/^ *search *\([A-Z,a-z,-,.]*\) *.*$/\1/'`
+  fi
+fi
+
+# anyone can create directories there
+chmod ugo+rwxt /scratch
+
+# Generic site-local-config & storage, suitable for an opportunistic site
+mkdir -p /etc/cms/JobConfig
+mkdir -p /etc/cms/PhEDEx
+cat <<SLC_EOF >/etc/cms/JobConfig/site-local-config.xml
+<site-local-config>
+        <site name="T1_UK_RAL">
+                <event-data>
+                        <catalog url="trivialcatalog_file:/etc/cms/PhEDEx/storage.xml?protocol=xrdfall"/>
+                </event-data>
+    <calib-data>
+                        <catalog url=""/> <!-- for old CMSSW -->
+                        <frontier-connect>
+                                <load balance="proxies"/>
+                                <proxy url="http://squid02.gridpp.rl.ac.uk:3128"/>
+                                <proxy url="http://squid03.gridpp.rl.ac.uk:3128"/>
+                                <proxy url="http://squid04.gridpp.rl.ac.uk:3128"/>
+                                <proxy url="http://squid05.gridpp.rl.ac.uk:3128"/>
+                                <backupproxy url="http://cmsbpfrontier.cern.ch:3128"/>
+                                <backupproxy url="http://cmsbproxy.fnal.gov:3128"/>
+                                <server url="http://cmsfrontier.cern.ch:8000/FrontierInt"/>
+                                <server url="http://cmsfrontier1.cern.ch:8000/FrontierInt"/>
+                                <server url="http://cmsfrontier2.cern.ch:8000/FrontierInt"/>
+                                <server url="http://cmsfrontier3.cern.ch:8000/FrontierInt"/>
+                        </frontier-connect>
+                </calib-data>
+                <local-stage-out>
+                        <command value="srmv2-lcg"/>
+                        <catalog url="trivialcatalog_file:/etc/cms/PhEDEx/storage.xml?protocol=srmv2"/>
+                        <se-name value="srm-cms-disk.gridpp.rl.ac.uk"/>
+                        <phedex-node value="T1_UK_RAL_Disk"/>
+                </local-stage-out>
+               <source-config> 
+                   <statistics-destination name="cms-udpmon-collector.cern.ch:9331" />
+               </source-config>
+        </site>
+</site-local-config>
+SLC_EOF
+cat <<S_EOF >/etc/cms/PhEDEx/storage.xml
+<storage-mapping>
+    <!-- Mappings are applied in order, so first to match wins. as store is most generic make sure its last -->
+    <!-- Production store -->
+        <lfn-to-pfn protocol="direct" path-match="/+store/(.*)" result="/castor/ads.rl.ac.uk/prod/cms/disk/store/\$1"/>
+        <pfn-to-lfn protocol="direct" path-match="/+castor/ads\.rl\.ac\.uk/prod/cms/disk/store/(.*)" result="/store/\$1"/>
+    <!-- End production store -->
+    <!-- Begin srmv2 -->
+        <lfn-to-pfn protocol="srmv2" chain="direct" space-token="CMSDISK" path-match="(.*)" result="srm://srm-cms-disk.gridpp.rl.ac.uk:8443/srm/managerv2?SFN=/castor/ads.rl.ac.uk/prod/cms/disk/\$1"/>
+        <pfn-to-lfn protocol="srmv2" chain="direct" path-match=".*\?SFN=(.*)" result="\$1"/>
+    <!-- End srmv2 -->
+    <!-- Begin xroot fallback-->
+        <lfn-to-pfn protocol="xrdfall" destination-match=".*" path-match="/+store/(.*)" result="root://xrootd-cms.infn.it//store/\$1"/>
+    <!-- End xroot fallback-->
+</storage-mapping>
+S_EOF
+
+cat <<CMS_EOF >/etc/cvmfs/config.d/cms.cern.ch.local
+export CMS_LOCAL_SITE=/etc/cms
+CMS_EOF
+
+# Bigger cvmfs cache, on the logical partition
+mkdir -p /scratch/cvmfs-cache 
+echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
+/usr/bin/cvmfs_config reload
+attr -g proxy /mnt/.ro
+attr -g proxy /cvmfs/cms.cern.ch/
+
+# Scratch tmp for TMPDIR
+mkdir -p /scratch/tmp
+chmod ugo+rwxt /scratch/tmp
+
+# We swap on the logical partition if no CernVM 2 swapfile
+# (cannot on CernVM 3 aufs filesystem)
+if [ ! -f /var/swap ] ; then
+  # Iff /scratch is ext4 can use:
+  fallocate -l 4g /scratch/swapfile
+  chmod 0600 /scratch/swapfile
+  mkswap /scratch/swapfile 
+  swapon /scratch/swapfile    
+fi
+
+# WLCG/LHCb Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
+rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
+rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
+       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
+      
+GMONDPORT=`python -c "import requests ; print requests.get('http://cms-ganglia.cern.ch/CMS VCycle test Grid-gmond-cluster-cfg.json', timeout=60).json()['PRISMA-INFN-BARI']['Port']"`
+if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
+  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/PRISMA-INFN-BARI/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/vm/gmond.conf > /etc/ganglia/gmond.conf
+  service gmond restart
+fi
+
+# Get CA certs from cvmfs
+ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
+
+# Don't want to be doing this at 4 or 5am every day!
+rm -f /etc/cron.daily/mlocate.cron
+
+# Avoid age-old sudo problem
+echo 'Defaults !requiretty' >>/etc/sudoers
+echo 'Defaults visiblepw'   >>/etc/sudoers
+
+# Create the gwmspilot account to run glidein_startup.sh
+/usr/sbin/useradd -b /scratch gwmspilot
+
+# Put glidein_startup.sh into required location with appropriate permissions
+mv /var/spool/vm/vm-glidein-config /scratch/gwmspilot/.
+mv /var/spool/vm/glidein_startup.sh /scratch/gwmspilot/.
+chown gwmspilot:gwmspilot /scratch/gwmspilot/glidein_startup.sh
+chmod 744 /scratch/gwmspilot/glidein_startup.sh
+chown gwmspilot:gwmspilot /scratch/gwmspilot/vm-glidein-config
+chmod 400 /scratch/gwmspilot/vm-glidein-config
+
+cd /scratch/gwmspilot
+
+# Make a proxy
+. /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+unset X509_USER_PROXY
+export X509_USER_CERT=/root/hostcert.pem
+export X509_USER_KEY=/root/hostkey.pem
+#export X509_USER_CERT=/tmp/userproxy.pem
+#export X509_USER_KEY=/tmp/userproxy.pem
+chmod 400 /root/hostkey.pem
+grid-proxy-init -valid 72:00 -out /tmp/userproxy.pem
+#grid-proxy-info -f /tmp/userproxy.pem
+chown gwmspilot:gwmspilot /tmp/userproxy.pem
+
+# Create script to run glidein_startup.sh
+cat <<VMP_EOF >vm-pilot
+#!/bin/sh
+date --utc +"%Y-%m-%d %H:%M:%S %Z vm-pilot Start vm-pilot"
+
+export X509_USER_PROXY=/tmp/userproxy.pem
+. /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+export VO_CMS_SW_DIR=/cvmfs/cms.cern.ch
+
+if [ -f glidein_startup.sh ]; then
+   ./glidein_startup.sh `cat vm-glidein-config`
+else
+   date --utc +"%Y-%m-%d %H:%M:%S %Z vm-pilot ERROR: glidein_startup.sh does not exist"
+fi
+
+date --utc +"%Y-%m-%d %H:%M:%S %Z vm-pilot Exit vm-pilot"
+
+VMP_EOF
+chmod a+xr vm-pilot
+
+# Create script to parse glidein log
+cat <<VMPA_EOF >/var/spool/vm/parse-vm-pilot-out
+#!/usr/bin/perl
+
+my \$jobs = 0;
+
+open(FILE, "<\$ARGV[0]");
+foreach my \$line (<FILE>)
+{
+   if (\$line =~ /\<status\>OK\<\/status\>/)
+   {
+      if (\$jobs == 0)
+      {
+         print "300 Nothing to do";
+      }
+      else
+      {
+         print "200 Success";
+      }
+      exit(0);
+   }
+   elsif (\$line =~ /\<status\>ERROR\<\/status\>/)
+   {
+      print "700 Payload job failed\n";
+      exit(0);
+   }
+   elsif (\$line =~ /Total jobs ([\d]+) utilization/)
+   {
+      \$jobs = \$1;
+   }
+}
+close(FILE);
+
+print "700 Payload job failed\n";
+exit(0);
+VMPA_EOF
+chmod a+xr /var/spool/vm/parse-vm-pilot-out
+
+# vm-heartbeat is touched every 5 minutes
+touch /etc/machineoutputs/vm-heartbeat
+echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+
+if [ "$META_MACHINEOUTPUTS" == "" ] ; then
+  # vm-heartbeat is writtenevery 5 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
+else
+  # put vm-heartbeat on MJF server every 10 minutes
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
+  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
+  
+  /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
+  /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
+  echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
+fi
+
+#start crond
+/etc/init.d/crond start
+
+# Run vm-pilot
+/usr/bin/sudo -n -u gwmspilot ./vm-pilot $* >>/etc/machineoutputs/vm-pilot.log 2>&1
+
+# Tell Vac what the outcome was
+perl /var/spool/vm/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.log >/etc/machineoutputs/shutdown_message
+
+if [ "$META_MACHINEOUTPUTS" != "" ] ; then
+  (
+    cd /etc/machineoutputs
+    for i in *
+    do
+     if [ -f $i ] ; then
+      curl --capath /etc/grid-security/certificates --cert /tmp/userproxy.pem --key /tmp/userproxy.pem --upload-file "$i" "$META_MACHINEOUTPUTS/"
+     fi
+    done
+  )
+fi 
+
+#send files to server
+if [ "$META_MACHINEOUTPUTS" != "" ] ; then
+(
+  cd /etc/machineoutputs
+  for i in *
+  do
+    if [ -f $i ] ; then
+       curl --upload-file "$i" "$META_MACHINEOUTPUTS/`hostname`/$i"
+    fi
+  done
+)
+fi 
+
+# And now his watch is ended...
+date +'%b %d %H:%M:%S vm-bootstrap Run /sbin/shutdown -h now'
+/sbin/shutdown -h now
+sleep 1234567890
+
+) >/etc/machineoutputs/vm-bootstrap.log 2>&1
