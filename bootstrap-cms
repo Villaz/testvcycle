@@ -114,11 +114,6 @@ if [ ! -f /var/swap ] ; then
   swapon /scratch/swapfile    
 fi
 
-# WLCG/LHCb Ganglia. Need 3.2.0+ to get override_hostname needed by NAT.
-rpm --nodeps -e ganglia ganglia-gmond ganglia-gmetad ganglia-web
-rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
-       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
-      
 GMONDPORT=`python -c "import requests ; print requests.get('http://cms-ganglia.cern.ch/CMS VCycle test Grid-gmond-cluster-cfg.json', timeout=60).json()['PRISMA-INFN-BARI']['Port']"`
 if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
   sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/PRISMA-INFN-BARI/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/vm/gmond.conf > /etc/ganglia/gmond.conf
@@ -166,7 +161,7 @@ cat <<VMP_EOF >vm-pilot
 date --utc +"%Y-%m-%d %H:%M:%S %Z vm-pilot Start vm-pilot"
 
 export X509_USER_PROXY=/tmp/userproxy.pem
-. /cvmfs/grid.cern.ch/glite/external/etc/profile.d/grid-env.sh
+. /cvmfs/grid.cern.ch/3.2.11-1/external/etc/profile.d/grid-env.sh
 export VO_CMS_SW_DIR=/cvmfs/cms.cern.ch
 
 if [ -f glidein_startup.sh ]; then
