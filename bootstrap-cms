@@ -234,6 +234,8 @@ fi
 #start crond
 /etc/init.d/crond start
 
+/usr/bin/node /usr/client/index.js -i `hostname` -t start
+
 # Run vm-pilot
 /usr/bin/sudo -n -u gwmspilot ./vm-pilot $* >>/etc/machineoutputs/vm-pilot.log 2>&1
 
