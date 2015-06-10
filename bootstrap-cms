@@ -267,9 +267,4 @@ if [ "$META_MACHINEOUTPUTS" != "" ] ; then
 )
 fi 
 
-# And now his watch is ended...
-date +'%b %d %H:%M:%S vm-bootstrap Run /sbin/shutdown -h now'
-/sbin/shutdown -h now
-sleep 1234567890
-
 ) >/etc/machineoutputs/vm-bootstrap.log 2>&1
