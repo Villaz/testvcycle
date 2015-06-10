@@ -124,12 +124,6 @@ if [ ! -f /var/swap ] ; then
   swapon /scratch/swapfile    
 fi
 
-GMONDPORT=`python -c "import requests ; print requests.get('http://cms-ganglia.cern.ch/CMS VCycle test Grid-gmond-cluster-cfg.json', timeout=60).json()['PRISMA-INFN-BARI']['Port']"`
-if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
-  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/PRISMA-INFN-BARI/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/vm/gmond.conf > /etc/ganglia/gmond.conf
-  service gmond restart
-fi
-
 # Get CA certs from cvmfs
 ln -sf /cvmfs/grid.cern.ch/etc/grid-security /etc/grid-security
 
