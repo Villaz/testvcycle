@@ -10,16 +10,6 @@ mkdir -p /etc/machineoutputs
 
 date +"%b %d %H:%M:%S vm-bootstrap VM starts on `hostname`"
 
-# create hostkey and certkey
-cp /root/hostkey.pem /root/combined.pem
-export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
-export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
-export numberLinesPub=`expr $numberLines - $numberLinesPriv`
-head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
-tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
-chmod 600 /root/hostkey.pem
-rm /root/combined.pem
-
 # Unmount CVMFS, as we have already used it for the CA certs
 /usr/bin/cvmfs_config umount
 
@@ -217,24 +207,6 @@ exit(0);
 VMPA_EOF
 chmod a+xr /var/spool/vm/parse-vm-pilot-out
 
-# vm-heartbeat is touched every 5 minutes
-touch /etc/machineoutputs/vm-heartbeat
-echo '*/5 * * * * root /bin/touch /etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
-
-if [ "$META_MACHINEOUTPUTS" == "" ] ; then
-  # vm-heartbeat is writtenevery 5 minutes
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
-  echo '*/5 * * * * root echo `cut -f1-3 -d' ' /proc/loadavg` `cat /proc/uptime` >/etc/machineoutputs/vm-heartbeat' >/etc/cron.d/vm-heartbeat
-else
-  # put vm-heartbeat on MJF server every 10 minutes
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-heartbeat
-  echo 0.0 0.0 0.0 0.0 0.0 > /etc/machineoutputs/vm-start
-  
-  /usr/bin/curl --upload-file /etc/machineoutputs/vm-start "$META_MACHINEOUTPUTS/`hostname`/vm-start"
-  /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat "$META_MACHINEOUTPUTS/`hostname`/vm-heartbeat"
-  echo -e "*/5 * * * * root echo \`cut -f1-3 -d' ' /proc/loadavg\` \`cat /proc/uptime\` >/etc/machineoutputs/vm-heartbeat ; /usr/bin/curl --upload-file /etc/machineoutputs/vm-heartbeat $META_MACHINEOUTPUTS/`hostname`/vm-heartbeat >/tmp/curl.log 2>&1" >/etc/cron.d/vm-heartbeat
-fi
-
 #start crond
 /etc/init.d/crond start
 
@@ -246,29 +218,6 @@ fi
 # Tell Vac what the outcome was
 perl /var/spool/vm/parse-vm-pilot-out /etc/machineoutputs/vm-pilot.log >/etc/machineoutputs/shutdown_message
 
-if [ "$META_MACHINEOUTPUTS" != "" ] ; then
-  (
-    cd /etc/machineoutputs
-    for i in *
-    do
-     if [ -f $i ] ; then
-      curl --capath /etc/grid-security/certificates --cert /tmp/userproxy.pem --key /tmp/userproxy.pem --upload-file "$i" "$META_MACHINEOUTPUTS/"
-     fi
-    done
-  )
-fi 
 
-#send files to server
-if [ "$META_MACHINEOUTPUTS" != "" ] ; then
-(
-  cd /etc/machineoutputs
-  for i in *
-  do
-    if [ -f $i ] ; then
-       curl --upload-file "$i" "$META_MACHINEOUTPUTS/`hostname`/$i"
-    fi
-  done
-)
-fi 
 
 ) >/etc/machineoutputs/vm-bootstrap.log 2>&1
