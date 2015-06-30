@@ -14,8 +14,16 @@ mkdir -p /etc/machineoutputs
 
 echo Output of VM bootstrap for `hostname`
 
-ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
-
+if [ ! -f /root/combined.pem ]; then
+	cp /root/hostkey.pem /root/combined.pem
+	export numberLines=`wc -l /root/combined.pem | awk '{print $1}'`
+	export numberLinesPriv=`egrep -n 'BEGIN CERTIFICATE' /root/combined.pem | awk 'BEGIN{FS=":"};{print $1-1}'`
+	export numberLinesPub=`expr $numberLines - $numberLinesPriv`
+	head -n $numberLinesPriv /root/combined.pem > /root/hostkey.pem
+	tail -n $numberLinesPub /root/combined.pem > /root/hostcert.pem
+	chmod 600 /root/hostkey.pem
+	ssh-keygen -y -f /root/hostkey.pem >> ~/.ssh/authorized_keys
+fi
 
 # Create a shutdown_message if ACPI shutdown signal received
 cp -f /var/spool/checkout/testvcycle/power.sh /etc/acpi/actions/power.sh
