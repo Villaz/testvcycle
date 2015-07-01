@@ -61,10 +61,7 @@ elif [ -b /dev/hdb ] ; then
  echo "Mounted /dev/hdb"
 else
  echo "no block device for /scratch"
- ll /dev
  echo "500 no vdb/hdb/sdb block device for /scratch" #> /etc/machineoutputs/shutdown_message
- #/sbin/shutdown -h now
- #sleep 1234567890
 fi
 
 if [ ! -d /etc/machinefeatures ] ; then
