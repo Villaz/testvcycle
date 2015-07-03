@@ -121,6 +121,8 @@ else
  export X509_USER_CERT=/root/hostcert.pem
  export X509_USER_KEY=/root/hostkey.pem
  # Myproxy username is "Panda queue name:X.509 DN"
+ ls -la /root
+ cat /root/hostcert.pem
  myproxyname=`openssl x509 -in /root/hostcert.pem -noout -subject | sed "s/^subject= /$1:/"`
  echo $myproxyname
  echo 'vcycle' | myproxy-logon --stdin_pass -l "$myproxyname" -o /tmp/userproxy.pem -t 96
