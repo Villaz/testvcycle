@@ -1,5 +1,6 @@
 import json
 import pymongo
+import os
 from os import listdir
 import xml.etree.ElementTree as ET
 from pymongo import MongoClient
