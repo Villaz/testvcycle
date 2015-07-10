@@ -21,7 +21,7 @@ echo 'Y' | /usr/bin/sudo -n -u phoronix phoronix-test-suite
 /usr/bin/sudo -n -u phoronix phoronix-test-suite batch-install pts/build-linux-kernel pts/compress-7zip pts/encode-mp3 pts/x264
 
 #Copy the user-config file to use the batch mode
-cp /root/profile/user-config.xml /home/phoronix/.phoronix-test-suite/user-config.xml
+cp /var/spool/checkout/testvcycle/profile/user-config.xml /home/phoronix/.phoronix-test-suite/user-config.xml
 chown phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
 chgrp phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
 chmod u+w /home/phoronix/.phoronix-test-suite/user-config.xml
@@ -31,4 +31,4 @@ chmod u+w /home/phoronix/.phoronix-test-suite/user-config.xml
 
 #Parse the tets and send the information to DB or Message Broker
 pip install pymongo==3.0.3
-cd /root/profile/; python profile.py
+cd /var/spool/checkout/testvcycle/profile/; python profile.py
