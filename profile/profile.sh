@@ -4,7 +4,9 @@
 #Is OS is CernVM the php is not compatible, it should be removed and installed again
 yum -y install epel-release
 yum -y install lapack fio gcc-c++ yasm
-yum -y remove php
+if [[ $kernel == *"cernvm"* ]]; then
+  yum -y remove php
+fi
 yum -y install php-domxml
 
 #Downloads and install phoronix
