@@ -28,6 +28,11 @@ fi
 /usr/sbin/useradd -b /home phoronix
 echo phoronix | passwd phoronix --stdin
 
+
+sed -e 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config > /etc/ssh/sshd_config_b
+cp /etc/ssh/sshd_config_b /etc/ssh/sshd_config
+service sshd restart
+
 #Configure phoronix
 yum -y install sshpass
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'echo "Y"|phoronix-test-suite batch-install pts/build-linux-kernel pts/compress-7zip pts/encode-mp3 pts/x264'
