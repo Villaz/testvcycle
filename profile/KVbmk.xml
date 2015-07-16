@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!DOCTYPE unifiedTestConfiguration SYSTEM "http://www.hep.ucl.ac.uk/atlas/AtlasTesting/DTD/unifiedTestConfiguration.dtd">
+
+<unifiedTestConfiguration>
+
+<kv>
+    <kvtest name='AtlasG4SPG' enabled='true'>
+      <release>ALL</release>
+      <priority>20</priority>
+      <kvsuite>KV2012</kvsuite>
+      <trf>AtlasG4_trf.py</trf>
+      <desc>Single Muon Simulation</desc>
+      <author>Alessandro De Salvo [Alessandro.DeSalvo@roma1.infn.it]</author>
+      <outpath>${T_DATAPATH}/SimulHITS-${T_RELEASE}</outpath>
+      <outfile>${T_PREFIX}-SimulHITS-${T_RELEASE}.pool.root</outfile>
+      <logfile>${T_PREFIX}-SimulHITS-${T_RELEASE}.log</logfile>
+      <kvprestage>http://kv.roma1.infn.it/KV/input_files/simul/preInclude.SingleMuonGenerator.py</kvprestage>
+      <signature>
+        outputHitsFile="${T_OUTFILE}" maxEvents=100 skipEvents=0 preInclude=KitValidation/kv_reflex.py,preInclude.SingleMuonGenerator.py geometryVersion=ATLAS-GEO-16-00-00 conditionsTag=OFLCOND-SDR-BS7T-04-03
+      </signature>
+      <copyfiles>
+        ${T_OUTFILE} ${T_LOGFILE} PoolFileCatalog.xml metadata.xml jobInfo.xml
+      </copyfiles>
+      <checkfiles>${T_OUTPATH}/${T_OUTFILE}</checkfiles>
+    </kvtest>
+</kv>
+</unifiedTestConfiguration>
