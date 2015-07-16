@@ -4,6 +4,8 @@
 #Is OS is CernVM the php is not compatible, it should be removed and installed again
 yum -y install epel-release
 yum -y install lapack fio gcc-c++ yasm
+
+kernel=`uname -r`
 if [[ $kernel == *"cernvm"* ]]; then
   yum -y remove php
 fi
