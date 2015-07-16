@@ -95,5 +95,4 @@ exec_kv
 
 
 #Parse the tets and send the information to DB or Message Broker
-pip install pymongo==3.0.3
-cd /var/spool/checkout/testvcycle/profile/; python profile.py -i `hostname`
+cd /var/spool/checkout/testvcycle/profile/; /usr/bin/python profile.py -i `hostname`
