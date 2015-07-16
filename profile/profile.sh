@@ -11,6 +11,8 @@ if [[ $kernel == *"cernvm"* ]]; then
 fi
 yum -y install php-domxml
 
+service gmond start
+
 if ! hash phoronix-test-suite 2>/dev/null; then 
   #Downloads and install phoronix
   cd /root
@@ -18,6 +20,7 @@ if ! hash phoronix-test-suite 2>/dev/null; then
   tar -zxf phoronix-test-suite-5.8.1.tar.gz
   cd /root/phoronix-test-suite ; ./install-sh
 fi
+
 
 #Creates a new user to execute the tests
 #If the tests are executed as root, the user-config and the result tests sometime are not well defined.
