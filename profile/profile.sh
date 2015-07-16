@@ -1,45 +1,6 @@
 #! /bin/bash
 
 
-function execution_cernvm {
-  #Creates a new user to execute the tests
-  #If the tests are executed as root, the user-config and the result tests sometime are not well defined.
-  /usr/sbin/useradd -b /home phoronix
-  echo phoronix | passwd phoronix --stdin
-
-  #Configure phoronix
-  yum -y install sshpass
-  sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'echo "Y"|phoronix-test-suite batch-install pts/build-linux-kernel pts/compress-7zip pts/encode-mp3 pts/x264'
-
-  #Copy the user-config file to use the batch mode
-  rm -f /home/phoronix/.phoronix-test-suite/user-config.xml
-  cp -f /var/spool/checkout/testvcycle/profile/user-config.xml /home/phoronix/.phoronix-test-suite/user-config.xml
-  chown phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
-  chgrp phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
-  chmod u+w /home/phoronix/.phoronix-test-suite/user-config.xml
-
-  #execute the tests
-  sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
-
-}
-
-
-function execution_centos {
-  echo 'Y' | phoronix phoronix-test-suite
-  phoronix-test-suite batch-install pts/build-linux-kernel pts/compress-7zip pts/encode-mp3 pts/x264
-
-  #Copy the user-config file to use the batch mode
-  rm -f /home/phoronix/.phoronix-test-suite/user-config.xml
-  cp -f /var/spool/checkout/testvcycle/profile/user-config.xml /home/phoronix/.phoronix-test-suite/user-config.xml
-  chown phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
-  chgrp phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
-  chmod u+w /home/phoronix/.phoronix-test-suite/user-config.xml
-
-  phoronix-test-suite batch-run pts/compress-7zip
-  mkdir -p /home/phoronix/.phoronix-test-suite/test-results
-  cp -r /home/root/.phoronix-test-suite/test-results/* /home/phoronix/.phoronix-test-suite/test-results/
-}
-
 #Install the packages needed to execute phoronix
 #If OS is CernVM the php is not compatible, it should be removed and installed again
 yum -y install epel-release
@@ -62,11 +23,24 @@ if ! hash phoronix-test-suite 2>/dev/null; then
 fi
 
 
-if [[ $kernel == *"cernvm"* ]]; then
-  execution_cernvm
-else
-  execution_centos
-fi
+#Creates a new user to execute the tests
+#If the tests are executed as root, the user-config and the result tests sometime are not well defined.
+/usr/sbin/useradd -b /home phoronix
+echo phoronix | passwd phoronix --stdin
+
+#Configure phoronix
+yum -y install sshpass
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'echo "Y"|phoronix-test-suite batch-install pts/build-linux-kernel pts/compress-7zip pts/encode-mp3 pts/x264'
+
+#Copy the user-config file to use the batch mode
+rm -f /home/phoronix/.phoronix-test-suite/user-config.xml
+cp -f /var/spool/checkout/testvcycle/profile/user-config.xml /home/phoronix/.phoronix-test-suite/user-config.xml
+chown phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
+chgrp phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
+chmod u+w /home/phoronix/.phoronix-test-suite/user-config.xml
+
+#execute the tests
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
 
 
 
