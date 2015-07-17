@@ -5,6 +5,7 @@ import socket
 import sys
 import os
 import commands
+import ipgetter
 from os import listdir
 import xml.etree.ElementTree as ET
 from pymongo import MongoClient
@@ -118,24 +119,6 @@ def parse_kv():
     open('/tmp/kv.json','w').write(json.dumps(result, indent=2))
     return result
 
-def parse_metadata(cloud, vo):
-    result = {'metadata':{}}
-    result.update({'_timestamp': int(time.time())})
-    result['metadata'].update({'ip': socket.gethostbyname(socket.gethostname())})
-    result['metadata'].update({'cloud': cloud})
-    result['metadata'].update({'UID':"%s%s%s" %(result['metadata']['ip'].replace('.',''),
-                                                result['_timestamp'],
-                                                result['metadata']['cloud'])})
-    result['metadata'].update({'VO': vo})
-    result['metadata'].update({'spec':{ 'osdist':commands.getoutput("lsb_release -d 2>/dev/null").split(":")[1][1:],
-                                       'pyver': sys.version.split()[0],
-                                       'cpuname': commands.getoutput("cat /proc/cpuinfo | grep '^model name' | tail -n 1").split(':')[1].lstrip(),
-                                       'cpunum' : commands.getoutput("cat /proc/cpuinfo | grep '^processor' |wc -l"),
-                                       'bogomips': commands.getoutput("cat /proc/cpuinfo | grep '^bogomips' | tail -n 1").split(':')[1].lstrip(),
-                                       'meminfo': commands.getoutput("cat /proc/meminfo | grep 'MemTotal:'").split()[1]}})
-    return result
-
-
 
 def parse_phoronix():
    path = '/home/phoronix/.phoronix-test-suite/test-results'
@@ -154,7 +137,7 @@ def parse_phoronix():
 def parse_metadata(cloud, vo):
     result = {'metadata':{}}
     result.update({'_timestamp': int(time.time())})
-    result['metadata'].update({'ip': socket.gethostbyname(socket.gethostname())})
+    result['metadata'].update({'ip': ipgetter.myip()})
     result['metadata'].update({'cloud': cloud})
     result['metadata'].update({'UID':"%s%s%s" %(result['metadata']['ip'].replace('.',''),
                                                 result['_timestamp'],
