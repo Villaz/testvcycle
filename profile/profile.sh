@@ -102,4 +102,4 @@ exec_kv
 
 
 #Parse the tets and send the information to DB or Message Broker
-cd /var/spool/checkout/testvcycle/profile/; /usr/bin/python profile.py -i `hostname`
+cd /var/spool/checkout/testvcycle/profile/; /usr/bin/python profile.py -i `hostname` -c $2 -v $5
