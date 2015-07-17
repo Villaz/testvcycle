@@ -174,10 +174,12 @@ queue_name = os.environ['QUEUE_NAME']
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--id", nargs='?', help="VM identifier")
+parser.add_argument("-v", "--vo", nargs='?', help="VO")
+parser.add_argument("-c", "--cloud", nargs='?', help="Cloud")
 args = parser.parse_args()
 
 
-result = parse_metadata(sys.argv[1], sys.argv[2])
+result = parse_metadata(args.vo, args.cloud)
 result.update({'profiles': {}})
 result['profiles'].update(parse_phoronix())
 result['profiles'].update(parse_kv())
@@ -185,7 +187,7 @@ result['profiles'].update(parse_kv())
 #save results in MongoDB
 client = MongoClient(mongo_db_url)
 db = client.infinity
-db.computers.find_one_and_update({'hostname':args.id},{'$set':result})
+db.computers.find_one_and_update({'hostname':args.id},{'$set':{'profile':result}})
 
 send_queue.submit(queue_host,
               queue_port,
