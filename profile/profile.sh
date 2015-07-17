@@ -1,7 +1,10 @@
 #! /bin/bash
 
 
-function exec_kv {
+function exec_kv{
+  KVBMK="https://raw.githubusercontent.com/Villaz/testvcycle/master/profile/KVbmk.xml"
+  KVTHR=1
+  KVTAG="TEST_OPENSTACK"
   mkdir /scratch/KV ; cd /scratch/KV
   wget https://kv.roma1.infn.it/KV/sw-mgr --no-check-certificate -O sw-mgr
   chmod u+x sw-mgr
@@ -25,7 +28,6 @@ function exec_kv {
   REFDATE=`date +\%y-\%m-\%d_\%H-\%M-\%S`
   KVLOG=kv_$REFDATE.out
   ./sw-mgr -a 17.8.0.9-x86_64 --test 17.8.0.9 --no-tag -p /cvmfs/atlas.cern.ch/repo/sw/software/x86_64-slc6-gcc46-opt/17.8.0 --kv-disable ALL --kv-enable $KVSUITE --kv-conf $KVBMK --kv-keep --kvpost --kvpost-tag $KVTAG --tthreads $KVTHR > $KVLOG
-  [ $? -ne 0 ] && exit 1
 
   TESTDIR=`ls -tr | grep kvtest_ | tail -1`
   df -h > space_available.log
@@ -38,6 +40,7 @@ function exec_kv {
   echo "start sw-mgr ${SW_MGR_START}">> $PERFMONLOG
   echo "end sw-mgr ${SW_MGR_STOP}" >> $PERFMONLOG
   grep -H PerfMon $TESTDIR/KV.thr.*/data/*/*log >> $PERFMONLOG
+
 }
 
 
@@ -96,4 +99,6 @@ exec_kv
 
 #Parse the tets and send the information to DB or Message Broker
 pip install pymongo==3.0.3
+pip install stomp.py
+
 cd /var/spool/checkout/testvcycle/profile/; python profile.py -i `hostname`
