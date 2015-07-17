@@ -33,18 +33,6 @@ mkdir -p /scratch/cvmfs-cache
 echo -e "CVMFS_QUOTA_LIMIT=11000\nCVMFS_CACHE_BASE=/scratch/cvmfs-cache" >>/etc/cvmfs/site.conf
 /usr/bin/cvmfs_config reload
 
-mkdir -p /cvmfs/atlas.cern.ch
-mkdir -p /cvmfs/atlas-condb.cern.ch
-mkdir -p /cvmfs/atlas-nightlies.cern.ch
-mkdir -p /cvmfs/sft.cern.ch
-mkdir -p /cvmfs/grid.cern.ch
-
-mount -t cvmfs atlas.cern.ch /cvmfs/atlas.cern.ch
-mount -t cvmfs atlas-condb.cern.ch /cvmfs/atlas-condb.cern.ch
-mount -t cvmfs atlas-nightlies.cern.ch /cvmfs/atlas-nightlies.cern.ch
-mount -t cvmfs sft.cern.ch /cvmfs/sft.cern.ch
-mount -t cvmfs grid.cern.ch /cvmfs/grid.cern.ch
-
 attr -g proxy /mnt/.ro
 attr -g proxy /cvmfs/atlas.cern.ch/
 
