@@ -165,12 +165,41 @@ def send_queue(host, port, username, password, queue, body):
     conn.disconnect()
 
 
+def s3(cloud, bucket, id, key):
+    import boto3
+    urls = []
+    url = "https://s3-us-west-2.amazonaws.com/%s/%s/" % (bucket, cloud)
+
+    client = boto3.client('s3', aws_access_key_id=id,
+                          aws_secret_access_key=key,
+                          )
+    try:
+        client.put_object(ACL='public-read',
+                          Body=open('/home/phoronix/phoronix.tar.gz', 'r').read(),
+                          Bucket=bucket,
+                          Key=cloud+'/phoronix.tar.gz')
+
+        client.put_object(ACL='public-read',
+                          Body=open('/home/phoronix/kv.tar.gz', 'r').read(),
+                          Bucket=bucket,
+                          Key=cloud+'/kv.tar.gz')
+        urls.append("%s%s" % (url,'phoronix.tar.gz'))
+        urls.append("%s%s" % (url,'kv.tar.gz'))
+    except:
+        pass
+    return urls
+
+
 mongo_db_url = os.environ['MONGO_DB']
 queue_host = os.environ['QUEUE_HOST']
 queue_port = os.environ['QUEUE_PORT']
 queue_username = os.environ['QUEUE_USERNAME']
 queue_password = os.environ['QUEUE_PASSWORD']
 queue_name = os.environ['QUEUE_NAME']
+
+aws_bucket = os.environ['AWS_BUCKET']
+aws_key_id = os.environ['AWS_KEY_ID']
+aws_private_key = os.environ['AWS_ACCESS_KEY']
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--id", nargs='?', help="VM identifier")
@@ -184,10 +213,12 @@ result.update({'profiles': {}})
 result['profiles'].update(parse_phoronix())
 result['profiles'].update(parse_kv())
 
+urls = s3(args.cloud, aws_bucket, aws_key_id, aws_private_key)
+
 #save results in MongoDB
 client = MongoClient(mongo_db_url)
 db = client.infinity
-db.computers.find_one_and_update({'hostname':args.id},{'$set':{'profile':result}})
+db.computers.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
 
 send_queue.submit(queue_host,
               queue_port,

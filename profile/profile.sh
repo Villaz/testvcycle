@@ -100,6 +100,7 @@ sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoron
 #execute KV Benchmark
 exec_kv
 
-
+tar -zcvf /home/phoronix/phoronix.tar.gz /home/phoronix/.phoronix-test-suite/test-results
+tar -zcvf /home/phoronix/kv.tar.gz /scratch/KV
 #Parse the tets and send the information to DB or Message Broker
 cd /var/spool/checkout/testvcycle/profile/; /usr/bin/python profile.py -i `hostname` -c $2 -v $5
