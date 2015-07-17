@@ -52,7 +52,14 @@ if [[ $kernel == *"cernvm"* ]]; then
 fi
 yum -y install php-domxml
 
-service gmond start
+
+
+rpm --nodeps -e ganglia ganglia-gmond
+rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
+       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
+sed -e "s/##HOST_NAME##/$1/" -e "s/##SITE_NAME##/$2/" -e "s/##PORT_NUMBER##/$3/" -e "s/##HOST##/$4/" /var/spool/checkout/testvcycle/gmond.conf > /etc/ganglia/gmond.conf
+service gmond restart
+
 
 if ! hash phoronix-test-suite 2>/dev/null; then 
   #Downloads and install phoronix
