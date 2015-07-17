@@ -2,6 +2,7 @@
 
 
 function exec_kv {
+  KVBMK="https://raw.githubusercontent.com/Villaz/testvcycle/master/profile/KVbmk.xml"
   mkdir /scratch/KV ; cd /scratch/KV
   wget https://kv.roma1.infn.it/KV/sw-mgr --no-check-certificate -O sw-mgr
   chmod u+x sw-mgr
@@ -55,9 +56,8 @@ yum -y install php-domxml
 
 
 rpm --nodeps -e ganglia ganglia-gmond
-rpm -i http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/libganglia-3.4.0-1.x86_64.rpm \
-       http://downloads.sourceforge.net/project/ganglia/ganglia%20monitoring%20core/3.4.0/RHEL6-RPMS/ganglia-gmond-3.4.0-1.x86_64.rpm
-sed -e "s/##HOST_NAME##/$1/" -e "s/##SITE_NAME##/$2/" -e "s/##PORT_NUMBER##/$3/" -e "s/##HOST##/$4/" /var/spool/checkout/testvcycle/gmond.conf > /etc/ganglia/gmond.conf
+rpm -i https://github.com/Villaz/testvcycle/blob/master/ganglia/libganglia-3.4.0-1.x86_64.rpm?raw=true
+rpm -i https://github.com/Villaz/testvcycle/blob/master/ganglia/ganglia-gmond-3.4.0-1.x86_64.rpm?raw=true
 service gmond restart
 
 
