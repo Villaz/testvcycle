@@ -165,10 +165,10 @@ def send_queue(host, port, username, password, queue, body):
     conn.disconnect()
 
 
-def s3(cloud, bucket, id, key):
+def s3(host_id, cloud, bucket, id, key):
     import boto3
     urls = []
-    url = "https://s3-us-west-2.amazonaws.com/%s/%s/" % (bucket, cloud)
+    url = "https://s3-us-west-2.amazonaws.com/%s/%s/%" % (bucket, cloud, host_id)
 
     client = boto3.client('s3', aws_access_key_id=id,
                           aws_secret_access_key=key,
@@ -213,7 +213,7 @@ result.update({'profiles': {}})
 result['profiles'].update(parse_phoronix())
 result['profiles'].update(parse_kv())
 
-urls = s3(args.cloud, aws_bucket, aws_key_id, aws_private_key)
+urls = s3(args.id, args.cloud, aws_bucket, aws_key_id, aws_private_key)
 
 #save results in MongoDB
 client = MongoClient(mongo_db_url)
