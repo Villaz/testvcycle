@@ -182,9 +182,9 @@ def s3(host_id, cloud, bucket, id, key):
         client.put_object(ACL='public-read',
                           Body=open('/home/phoronix/kv.tar.gz', 'r').read(),
                           Bucket=bucket,
-                          Key="%s/%s/%s" % (cloud, host_id ,'kv.tar.gz')
-        urls.append("%s%s" % (url,'phoronix.tar.gz'))
-        urls.append("%s%s" % (url,'kv.tar.gz'))
+                          Key="%s/%s/%s" % (cloud, host_id ,'kv.tar.gz'))
+        urls.append("%s%s" % (url, 'phoronix.tar.gz'))
+        urls.append("%s%s" % (url, 'kv.tar.gz'))
     except:
         pass
     return urls
