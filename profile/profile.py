@@ -168,7 +168,7 @@ def send_queue(host, port, username, password, queue, body):
 def s3(host_id, cloud, bucket, id, key):
     import boto3
     urls = []
-    url = "https://s3-us-west-2.amazonaws.com/%s/%s/%" % (bucket, cloud, host_id)
+    url = "https://s3-us-west-2.amazonaws.com/%s/%s/%s" % (bucket, cloud, host_id)
 
     client = boto3.client('s3', aws_access_key_id=id,
                           aws_secret_access_key=key,
