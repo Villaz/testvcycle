@@ -168,7 +168,7 @@ def send_queue(host, port, username, password, queue, body):
 def s3(host_id, cloud, bucket, id, key):
     import boto3
     urls = []
-    url = "https://s3-us-west-2.amazonaws.com/%s/%s/%s" % (bucket, cloud, host_id)
+    url = "https://s3-us-west-2.amazonaws.com/%s/%s/%s/" % (bucket, cloud, host_id)
 
     client = boto3.client('s3', aws_access_key_id=id,
                           aws_secret_access_key=key,
@@ -177,12 +177,12 @@ def s3(host_id, cloud, bucket, id, key):
         client.put_object(ACL='public-read',
                           Body=open('/home/phoronix/phoronix.tar.gz', 'r').read(),
                           Bucket=bucket,
-                          Key=cloud+'/phoronix.tar.gz')
+                          Key="/%s/%s/%s" % (cloud, host_id ,'phoronix.tar.gz'))
 
         client.put_object(ACL='public-read',
                           Body=open('/home/phoronix/kv.tar.gz', 'r').read(),
                           Bucket=bucket,
-                          Key=cloud+'/kv.tar.gz')
+                          Key="/%s/%s/%s" % (cloud, host_id ,'kv.tar.gz')
         urls.append("%s%s" % (url,'phoronix.tar.gz'))
         urls.append("%s%s" % (url,'kv.tar.gz'))
     except:
