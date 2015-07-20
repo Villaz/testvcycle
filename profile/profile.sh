@@ -61,7 +61,7 @@ rpm -i https://github.com/Villaz/testvcycle/blob/master/ganglia/ganglia-gmond-3.
 service gmond restart
 
 
-if ! hash phoronix-test-suite 2>/dev/null; then 
+if ! hash phoronix-test-suite 2>/dev/null; then
   #Downloads and install phoronix
   cd /root
   wget http://www.phoronix-test-suite.com/download.php?file=phoronix-test-suite-5.8.1 -O phoronix-test-suite-5.8.1.tar.gz
@@ -101,6 +101,9 @@ sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoron
 exec_kv
 
 tar -zcvf /home/phoronix/phoronix.tar.gz /home/phoronix/.phoronix-test-suite/test-results
+rm -rf /scratch/KV/pacman*
+rm -rf /scratch/KV/*.bz2
+rm -rf /scratch/KV/sw-mgr
 tar -zcvf /home/phoronix/kv.tar.gz /scratch/KV
 #Parse the tets and send the information to DB or Message Broker
 cd /var/spool/checkout/testvcycle/profile/; /usr/bin/python profile.py -i `hostname` -c $2 -v $5
