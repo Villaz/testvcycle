@@ -208,7 +208,7 @@ parser.add_argument("-c", "--cloud", nargs='?', help="Cloud")
 args = parser.parse_args()
 
 
-result = parse_metadata(args.vo, args.cloud)
+result = parse_metadata(args.cloud, args.vo)
 result.update({'profiles': {}})
 result['profiles'].update(parse_phoronix())
 result['profiles'].update(parse_kv())
