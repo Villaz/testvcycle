@@ -156,7 +156,7 @@ def send_queue(host, port, username, password, queue, body):
     import stomp
     import time
 
-    conn = stomp.Connection([(host, port)])
+    conn = stomp.Connection([(host, int(port))])
     conn.start()
     conn.connect(username, password, True)
     conn.send(body=body, destination=queue)

@@ -92,10 +92,10 @@ chgrp phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
 chmod u+w /home/phoronix/.phoronix-test-suite/user-config.xml
 
 #execute the tests
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/encode-mp3'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/x264'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/build-linux-kernel'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/compress-7zip; phoronix-test-suite batch-run pts/compress-7zip'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/encode-mp3; phoronix-test-suite batch-run pts/encode-mp3'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/x264; phoronix-test-suite batch-run pts/x264'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/build-linux-kernel; phoronix-test-suite batch-run pts/build-linux-kernel'
 
 #execute KV Benchmark
 exec_kv
