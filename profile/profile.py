@@ -220,7 +220,7 @@ client = MongoClient(mongo_db_url)
 db = client.infinity
 db.computers.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
 
-send_queue.submit(queue_host,
+send_queue(queue_host,
               queue_port,
               queue_username,
               queue_password,
