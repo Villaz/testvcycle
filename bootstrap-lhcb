@@ -164,8 +164,6 @@ mkdir -p /opt/glite/sbin
 cp $CONTEXTDIR/glexec /opt/glite/sbin/glexec
 chmod ugo+x /opt/glite/sbin/glexec
 
-/usr/bin/node /usr/client/index.js -i `hostname` -t start
-
 # Now run the pilot script, possibly with the IaaS metadata updated VM_UUID
 
 $CONTEXTDIR/ParseJobAgentLog /etc/machineoutputs/vm-pilot.log > /etc/machineoutputs/shutdown_message
