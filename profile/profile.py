@@ -213,6 +213,13 @@ result.update({'profiles': {}})
 result['profiles'].update(parse_phoronix())
 result['profiles'].update(parse_kv())
 
+send_queue(queue_host,
+              queue_port,
+              queue_username,
+              queue_password,
+              queue_name,
+              json.dumps(result))
+
 urls = s3(args.id, args.cloud, aws_bucket, aws_key_id, aws_private_key)
 
 #save results in MongoDB
@@ -220,9 +227,4 @@ client = MongoClient(mongo_db_url)
 db = client.infinity
 db.computers.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
 
-send_queue(queue_host,
-              queue_port,
-              queue_username,
-              queue_password,
-              queue_name,
-              json.dumps(result))
+
