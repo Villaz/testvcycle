@@ -139,10 +139,10 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 cd /scratch/dirac
 
 mkdir -p /scratch/dirac/etc/grid-security
-cp /root/hostkey.pem /scratch/dirac/etc/grid-security
+cp /root/combined.pem /scratch/dirac/etc/grid-security/hostkey.pem
 chmod 0600 /scratch/dirac/etc/grid-security/hostkey.pem
 
-cp /root/hostkey.pem /scratch/dirac/etc/grid-security/hostcert.pem
+cp /root/combined.pem /scratch/dirac/etc/grid-security/hostcert.pem
 chmod 0600 /scratch/dirac/etc/grid-security/hostcert.pem
 
 chmod 0755 /scratch/dirac
