@@ -94,3 +94,5 @@ touch /etc/machineoutputs/vm-pilot.err
            /etc/machineoutputs
 
 ) >/etc/machineoutputs/vm-pilot.log 2>&1
+
+tar -zcvf /tmp/outputs.tar.gz /etc/machineoutputs
