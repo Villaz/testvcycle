@@ -227,6 +227,6 @@ urls = s3(args.id, args.cloud, aws_bucket, aws_key_id, aws_private_key)
 #save results in MongoDB
 client = MongoClient(mongo_db_url)
 db = client.infinity
-db.computers.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
+db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
 
 
