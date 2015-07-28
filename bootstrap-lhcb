@@ -122,12 +122,6 @@ fi
 
 sysctl vm.swappiness=0
 
-GMONDPORT=`python -c "import requests ; print requests.get('http://lgm.cern.ch/lhcb-gmond-cluster-cfg.json', timeout=60).json()['$DIRAC_SITE']['Port']"`
-if [ $? = 0 -a "$GMONDPORT" != "" ] ; then
-  sed -e "s/##HOST_NAME##/$HOSTNAME/" -e "s/##SITE_NAME##/$DIRAC_SITE/" -e "s/##PORT_NUMBER##/$GMONDPORT/" /var/spool/checkout/gmond.conf > /etc/ganglia/gmond.conf
-  service gmond restart
-fi
-
 # Get CA certs from cvmfs
 rm -Rf /etc/grid-security
 ln -sf  /cvmfs/lhcb.cern.ch/etc/grid-security /etc/grid-security
@@ -145,10 +139,10 @@ echo 'Defaults visiblepw'   >>/etc/sudoers
 cd /scratch/dirac
 
 mkdir -p /scratch/dirac/etc/grid-security
-cp /root/hostkey.pem /scratch/dirac/etc/grid-security
+cp /root/combined.pem /scratch/dirac/etc/grid-security/hostkey.pem
 chmod 0600 /scratch/dirac/etc/grid-security/hostkey.pem
 
-cp /root/hostkey.pem /scratch/dirac/etc/grid-security/hostcert.pem
+cp /root/combined.pem /scratch/dirac/etc/grid-security/hostcert.pem
 chmod 0600 /scratch/dirac/etc/grid-security/hostcert.pem
 
 chmod 0755 /scratch/dirac
@@ -169,8 +163,6 @@ echo 'dirac ALL = (diracuser) NOPASSWD: ALL' >>/etc/sudoers
 mkdir -p /opt/glite/sbin
 cp $CONTEXTDIR/glexec /opt/glite/sbin/glexec
 chmod ugo+x /opt/glite/sbin/glexec
-
-/usr/bin/node /usr/client/index.js -i `hostname` -t start
 
 # Now run the pilot script, possibly with the IaaS metadata updated VM_UUID
 /usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=CLOUD.Azure.ch --ce-name=vcycle-egi-01.cern.ch --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1

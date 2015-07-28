@@ -54,6 +54,7 @@ kernel=`uname -r`
 if [[ $kernel == *"cernvm"* ]]; then
   yum -y remove php
 fi
+yum -y install php
 yum -y install php-domxml
 
 
