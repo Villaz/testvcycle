@@ -95,7 +95,10 @@ def parse_kv():
             file_name = "%s/%s" % (path, f)
             break
 
-    file = open(file_name,"r")
+    if file_name is None:
+        return result
+
+    file = open(file_name, "r")
     reading_stats = False
 
     lines = file.read().split("\n")

@@ -3,7 +3,10 @@
 
 function exec_kv {
   KVBMK="https://raw.githubusercontent.com/Villaz/testvcycle/master/profile/KVbmk.xml"
-  mkdir /scratch/KV ; cd /scratch/KV
+  KVTAG=$SITE
+  KVTHR=1
+
+  mkdir -p /scratch/KV ; cd /scratch/KV
   wget https://kv.roma1.infn.it/KV/sw-mgr --no-check-certificate -O sw-mgr
   chmod u+x sw-mgr
 
@@ -25,7 +28,7 @@ function exec_kv {
 
   REFDATE=`date +\%y-\%m-\%d_\%H-\%M-\%S`
   KVLOG=kv_$REFDATE.out
-  ./sw-mgr -a 17.8.0.9-x86_64 --test 17.8.0.9 --no-tag -p /cvmfs/atlas.cern.ch/repo/sw/software/x86_64-slc6-gcc46-opt/17.8.0 --kv-disable ALL --kv-enable $KVSUITE --kv-conf $KVBMK --kv-keep --kvpost --kvpost-tag $KVTAG --tthreads $KVTHR > $KVLOG
+  ./sw-mgr -a 17.8.0.9-x86_64 --test 17.8.0.9 --no-tag -p /cvmfs/atlas.cern.ch/repo/sw/software/x86_64-slc6-gcc46-opt/17.8.0 --kv-disable ALL --kv-enable $KVSUITE --kv-conf $KVBMK --kv-keep --kvpost --kvpost-tag $KVTAG --tthreads $KVTHR #> $KVLOG
   [ $? -ne 0 ] && exit 1
 
   TESTDIR=`ls -tr | grep kvtest_ | tail -1`
@@ -75,27 +78,20 @@ fi
 /usr/sbin/useradd -b /home phoronix
 echo phoronix | passwd phoronix --stdin
 
-
 sed -e 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config > /etc/ssh/sshd_config_b
-cp /etc/ssh/sshd_config_b /etc/ssh/sshd_config
+mv -f /etc/ssh/sshd_config_b /etc/ssh/sshd_config
 service sshd restart
 
 #Configure phoronix
 yum -y install sshpass
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'echo "Y"|phoronix-test-suite batch-install pts/build-linux-kernel pts/compress-7zip pts/encode-mp3 pts/x264'
 
-#Copy the user-config file to use the batch mode
-rm -f /home/phoronix/.phoronix-test-suite/user-config.xml
-cp -f /var/spool/checkout/testvcycle/profile/user-config.xml /home/phoronix/.phoronix-test-suite/user-config.xml
-chown phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
-chgrp phoronix /home/phoronix/.phoronix-test-suite/user-config.xml
-chmod u+w /home/phoronix/.phoronix-test-suite/user-config.xml
 
-#execute the tests
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/compress-7zip; phoronix-test-suite batch-run pts/compress-7zip'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/encode-mp3; phoronix-test-suite batch-run pts/encode-mp3'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/x264; phoronix-test-suite batch-run pts/x264'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-install pts/build-linux-kernel; phoronix-test-suite batch-run pts/build-linux-kernel'
+#download phoronix data
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'wget http://vcycle-manager-lv.cern.ch/scripts/phoronix.tar.gz /home/phoronix/; cd home/phoronix/; tar -zxvf /home/phoronix/phoronix.tar.gz'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/encode-mp3'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/x264'
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/build-linux-kernel'
 
 #execute KV Benchmark
 exec_kv
@@ -106,4 +102,7 @@ rm -rf /scratch/KV/*.bz2
 rm -rf /scratch/KV/sw-mgr
 tar -zcvf /home/phoronix/kv.tar.gz /scratch/KV
 #Parse the tets and send the information to DB or Message Broker
-cd /var/spool/checkout/testvcycle/profile/; /usr/bin/python profile.py -i `hostname` -c $2 -v $5
+source /usr/python-env/bin/activate
+cd /var/spool/checkout/testvcycle/profile/
+python profile.py -i `hostname` -c $SITE -v $EXPERIMENT
+deactivate
