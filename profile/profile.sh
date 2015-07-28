@@ -28,7 +28,7 @@ fi
 
 
 #Creates a new user to execute the tests
-#If the tests are executed as root, the user-config and the result tests sometime are not well defined.
+#If the tests are executed as root, the user-config and the result tests sometimes are not well defined.
 /usr/sbin/useradd -b /home phoronix
 echo phoronix | passwd phoronix --stdin
 
@@ -57,4 +57,4 @@ rm -rf /scratch/KV/*.bz2
 rm -rf /scratch/KV/sw-mgr
 tar -zcvf /home/phoronix/kv.tar.gz /scratch/KV
 #Parse the tets and send the information to DB or Message Broker
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 "source /root/sources; source /usr/python-env/bin/activate; cd /var/spool/checkout/testvcycle/profile/;python profile.py -i `hostname` -c $SITE -v $EXPERIMENT"
+sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 "source /usr/share/sources; source /usr/python-env/bin/activate; cd /var/spool/checkout/testvcycle/profile/;python profile.py -i `hostname` -c $SITE -v $EXPERIMENT"
