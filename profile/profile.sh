@@ -43,13 +43,13 @@ yum -y install sshpass
 #download phoronix data
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'wget http://vcycle-manager-lv.cern.ch/scripts/phoronix.tar.gz /home/phoronix/; cd home/phoronix/; tar -zxvf /home/phoronix/phoronix.tar.gz'
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/encode-mp3'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/x264'
-sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/build-linux-kernel'
+#sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/encode-mp3'
+#sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/x264'
+#sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/build-linux-kernel'
 
 #execute KV Benchmark
-chmod u+x kv.sh
-./kv.sh
+chmod u+x /var/spool/checkout/testvcycle/profile/kv.sh
+/var/spool/checkout/testvcycle/profile/kv.sh
 
 tar -zcvf /home/phoronix/phoronix.tar.gz /home/phoronix/.phoronix-test-suite/test-results
 rm -rf /scratch/KV/pacman*
