@@ -86,6 +86,7 @@ def fill_memory_leak_results(result, key, lines, i):
                     'evt 21-50':extract_memory_value(lines[i+5]),
                     'evt 51+':extract_memory_value(lines[i+6])} })
 
+
 def parse_kv():
     result = {'kv': {}}
     path = "/scratch/KV"
@@ -103,7 +104,7 @@ def parse_kv():
 
     lines = file.read().split("\n")
     aux_result = None
-    for i in range(0,len(lines)):
+    for i in range(0, len(lines)):
         line = lines[i]
         if line.find("## PerfMonFlags ##")> 0:
             thread = line[line.find("KV.thr.")+len("KV.thr.")]
@@ -119,7 +120,6 @@ def parse_kv():
             fill_memory_results(aux_result, 'memory', lines, i)
         if line.find("vmem-leak estimation") > 0:
             fill_memory_leak_results(aux_result, 'vmem-leak', lines, i)
-    open('/tmp/kv.json','w').write(json.dumps(result, indent=2))
     return result
 
 
@@ -133,7 +133,6 @@ def parse_phoronix():
          title = root.find('Result').find('Title').text
          value = root.find('Result').find('Data').find('Entry').find('Value').text
          result['phoronix'].update({title:value})
-   open('phoronix.json','w').write(json.dumps(result, indent=2))
    return result
 
 
