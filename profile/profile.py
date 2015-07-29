@@ -9,6 +9,7 @@ import ipgetter
 from os import listdir
 import xml.etree.ElementTree as ET
 from pymongo import MongoClient
+import requests
 import argparse
 
 def extract_values(line):
@@ -138,12 +139,10 @@ def parse_phoronix():
 
 def parse_metadata(cloud, vo):
     result = {'metadata':{}}
-    result.update({'_timestamp': str(int(time.time()))})
+    result.update({'_timestamp': int(time.time())})
     result['metadata'].update({'ip': ipgetter.myip()})
     result['metadata'].update({'cloud': cloud})
-    result['metadata'].update({'UID':"%s%s%s" %(result['metadata']['ip'].replace('.',''),
-                                                result['_timestamp'],
-                                                result['metadata']['cloud'])})
+    result['metadata'].update({'UID': generate_id()})
     result['metadata'].update({'VO': vo})
     result['metadata'].update({'spec':{ 'osdist':commands.getoutput("lsb_release -d 2>/dev/null").split(":")[1][1:],
                                        'pyver': sys.version.split()[0],
@@ -190,6 +189,12 @@ def s3(host_id, cloud, bucket, id, key):
     except:
         pass
     return urls
+
+def generate_id():
+    r = requests.get('http://cernvm.cern.ch/config').text
+    id = r[r.find('CERNVM_UUID=')+len('CERNVM_UUID='):]
+    id = id[:id.find("\n")]
+    return id
 
 
 mongo_db_url = os.environ['MONGO_DB']
