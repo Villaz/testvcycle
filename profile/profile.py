@@ -138,7 +138,7 @@ def parse_phoronix():
 
 def parse_metadata(cloud, vo):
     result = {'metadata':{}}
-    result.update({'_timestamp': int(time.time())})
+    result.update({'_timestamp': str(int(time.time()))})
     result['metadata'].update({'ip': ipgetter.myip()})
     result['metadata'].update({'cloud': cloud})
     result['metadata'].update({'UID':"%s%s%s" %(result['metadata']['ip'].replace('.',''),
