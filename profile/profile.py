@@ -22,9 +22,9 @@ def extract_values(line):
             deviation = '%.5f' % (float(deviation)/1000)
             unit = 's'
     if float(deviation) == 0:
-        return {'value': value, 'unit':unit}
+        return {'value': float(value), 'unit':unit}
     else:
-        return {'value': value, 'error': deviation, 'unit':unit}
+        return {'value': float(value), 'error': float(deviation), 'unit':unit}
 
 
 def fill_results(result, key, lines, i):
@@ -36,12 +36,10 @@ def fill_results(result, key, lines, i):
     nalloc = extract_values(lines[i+5])
     rt = extract_values(lines[i+6])
     result.update({key: {'entries': entries,
-                         'values':{
-                                  'cpu': cpu,
-                                  'real': real,
-                                  'vmem': vmem
-                                 }
-                         }
+                         'cpu': cpu,
+                         'real': real,
+                         'vmem': vmem
+                        }
                    })
                        #'malloc': malloc,
                        #'nalloc': nalloc,
@@ -54,7 +52,7 @@ def fill_memory_results(result, key, lines, i):
         value = value[value.find(":")+2:].strip()
         unit = value[value.find(" ")+1:].strip()
         value = value[:value.find(" ")]
-        return {'value':value, 'unit':unit}
+        return {'value': float(value), 'unit':unit}
 
     result.update({key:{ 'vm_data': extract_memory_value(lines[i+1]),
                     'vm_exe': extract_memory_value(lines[i+2]),
@@ -78,14 +76,14 @@ def fill_memory_leak_results(result, key, lines, i):
         if unit == 'ms':
             value = round(value/1000, 5)
             unit = 's'
-        return {'value':value, 'unit':unit}
-        return value
+        return {'value': float(value), 'unit':unit}
+        return float(value)
     result.update({key: {'first-evt': extract_memory_value(lines[i+1]),
-                    '10th -evt':extract_memory_value(lines[i+2]),
-                    'last -evt':extract_memory_value(lines[i+3]),
-                    'evt  2-20':extract_memory_value(lines[i+4]),
-                    'evt 21-50':extract_memory_value(lines[i+5]),
-                    'evt 51+':extract_memory_value(lines[i+6])} })
+                         '10th -evt':extract_memory_value(lines[i+2]),
+                         'last -evt':extract_memory_value(lines[i+3]),
+                         'evt  2-20':extract_memory_value(lines[i+4]),
+                         'evt 21-50':extract_memory_value(lines[i+5]),
+                         'evt 51+':extract_memory_value(lines[i+6])} })
 
 
 def parse_kv():
@@ -129,11 +127,11 @@ def parse_phoronix():
    result = {'phoronix': {}}
    for f in listdir(path):
       if f.find('pts-results-viewer') < 0 and f[0] is not '.':
-         tree = ET.parse("%s/%s/%s" % (path,f,"test-1.xml"))
+         tree = ET.parse("%s/%s/%s" % (path, f, "test-1.xml"))
          root = tree.getroot()
          title = root.find('Result').find('Title').text
-         value = root.find('Result').find('Data').find('Entry').find('Value').text
-         result['phoronix'].update({title:value})
+         value = float(root.find('Result').find('Data').find('Entry').find('Value').text)
+         result['phoronix'].update({title: float(value)})
    return result
 
 
@@ -144,14 +142,27 @@ def parse_metadata(cloud, vo):
     result['metadata'].update({'cloud': cloud})
     result['metadata'].update({'UID': generate_id()})
     result['metadata'].update({'VO': vo})
-    result['metadata'].update({'spec':{ 'osdist':commands.getoutput("lsb_release -d 2>/dev/null").split(":")[1][1:],
-                                       'pyver': sys.version.split()[0],
-                                       'cpuname': commands.getoutput("cat /proc/cpuinfo | grep '^model name' | tail -n 1").split(':')[1].lstrip(),
-                                       'cpunum' : commands.getoutput("cat /proc/cpuinfo | grep '^processor' |wc -l"),
-                                       'bogomips': commands.getoutput("cat /proc/cpuinfo | grep '^bogomips' | tail -n 1").split(':')[1].lstrip(),
-                                       'meminfo': commands.getoutput("cat /proc/meminfo | grep 'MemTotal:'").split()[1]}})
+    result['metadata'].update({'osdist':commands.getoutput("lsb_release -d 2>/dev/null").split(":")[1][1:]})
+    result['metadata'].update({'pyver': sys.version.split()[0]})
+    result['metadata'].update({'cpuname': commands.getoutput("cat /proc/cpuinfo | grep '^model name' | tail -n 1").split(':')[1].lstrip()})
+    result['metadata'].update({'cpunum' : commands.getoutput("cat /proc/cpuinfo | grep '^processor' |wc -l")})
+    result['metadata'].update({'bogomips': commands.getoutput("cat /proc/cpuinfo | grep '^bogomips' | tail -n 1").split(':')[1].lstrip()})
+    result['metadata'].update({'meminfo': commands.getoutput("cat /proc/meminfo | grep 'MemTotal:'").split()[1]})
     return result
 
+
+def generate_rkv(document):
+    rkv = {}
+    for thread in document['profiles']['kv']:
+        for type in document['profiles']['kv'][thread]:
+            if type not in rkv:
+                rkv[type] = {}
+            for metric in document['profiles']['kv'][thread][type]:
+                if metric == 'entries': continue;
+                if "%s_values" % metric not in rkv[type]:
+                    rkv[type]["%s_values" % metric] = []
+                rkv[type]["%s_values" % metric].append(document['profiles']['kv'][thread][type][metric]['value'])
+    print rkv
 
 def send_queue(host, port, username, password, queue, body):
     import stomp
@@ -197,41 +208,47 @@ def generate_id():
     return id
 
 
-mongo_db_url = os.environ['MONGO_DB']
-queue_host = os.environ['QUEUE_HOST']
-queue_port = os.environ['QUEUE_PORT']
-queue_username = os.environ['QUEUE_USERNAME']
-queue_password = os.environ['QUEUE_PASSWORD']
-queue_name = os.environ['QUEUE_NAME']
+if __name__ == '__main__':
 
-aws_bucket = os.environ['AWS_BUCKET']
-aws_key_id = os.environ['AWS_KEY_ID']
-aws_private_key = os.environ['AWS_ACCESS_KEY']
+    mongo_db_url = os.environ['MONGO_DB']
+    queue_host = os.environ['QUEUE_HOST']
+    queue_port = os.environ['QUEUE_PORT']
+    queue_username = os.environ['QUEUE_USERNAME']
+    queue_password = os.environ['QUEUE_PASSWORD']
+    queue_name = os.environ['QUEUE_NAME']
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-i", "--id", nargs='?', help="VM identifier")
-parser.add_argument("-v", "--vo", nargs='?', help="VO")
-parser.add_argument("-c", "--cloud", nargs='?', help="Cloud")
-args = parser.parse_args()
+    aws_bucket = os.environ['AWS_BUCKET']
+    aws_key_id = os.environ['AWS_KEY_ID']
+    aws_private_key = os.environ['AWS_ACCESS_KEY']
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--id", nargs='?', help="VM identifier")
+    parser.add_argument("-v", "--vo", nargs='?', help="VO")
+    parser.add_argument("-c", "--cloud", nargs='?', help="Cloud")
+    args = parser.parse_args()
 
 
-result = parse_metadata(args.cloud, args.vo)
-result.update({'profiles': {}})
-result['profiles'].update(parse_phoronix())
-result['profiles'].update(parse_kv())
+    result = parse_metadata(args.cloud, args.vo)
+    result.update({'profiles': {}})
+    result['profiles'].update(parse_phoronix())
+    result['profiles'].update(parse_kv())
+    result['profiles'].update({'rkv': generate_rkv(result)})
 
-send_queue(queue_host,
-              queue_port,
-              queue_username,
-              queue_password,
-              queue_name,
-              json.dumps(result))
+    import uuid
+    open("/tmp/%s_profile" % str(uuid.uuid4()),'w').write(json.dumps(result))
 
-urls = s3(args.id, args.cloud, aws_bucket, aws_key_id, aws_private_key)
+    send_queue(queue_host,
+               queue_port,
+               queue_username,
+               queue_password,
+               queue_name,
+               json.dumps(result))
 
-#save results in MongoDB
-client = MongoClient(mongo_db_url)
-db = client.infinity
-db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
+    urls = s3(args.id, args.cloud, aws_bucket, aws_key_id, aws_private_key)
+
+    #save results in MongoDB
+    client = MongoClient(mongo_db_url)
+    db = client.infinity
+    db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
 
 
