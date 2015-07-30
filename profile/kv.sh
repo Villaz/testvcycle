@@ -2,7 +2,7 @@
 
 KVBMK="https://raw.githubusercontent.com/Villaz/testvcycle/master/profile/KVbmk.xml"
 KVTAG=$SITE
-KVTHR=1
+KVTHR=`grep -c processor /proc/cpuinfo`
 
 mkdir -p /scratch/KV ; cd /scratch/KV
 wget https://kv.roma1.infn.it/KV/sw-mgr --no-check-certificate -O sw-mgr
@@ -26,7 +26,7 @@ echo "./sw-mgr -a 17.8.0.9-x86_64 --test 17.8.0.9 --no-tag -p /cvmfs/atlas.cern.
 
 REFDATE=`date +\%y-\%m-\%d_\%H-\%M-\%S`
 KVLOG=kv_$REFDATE.out
-./sw-mgr -a 17.8.0.9-x86_64 --test 17.8.0.9 --no-tag -p /cvmfs/atlas.cern.ch/repo/sw/software/x86_64-slc6-gcc46-opt/17.8.0 --kv-disable ALL --kv-enable $KVSUITE --kv-conf $KVBMK --kv-keep --kvpost --kvpost-tag $KVTAG --tthreads $KVTHR #> $KVLOG
+./sw-mgr -a 17.8.0.9-x86_64 --test 17.8.0.9 --no-tag -p /cvmfs/atlas.cern.ch/repo/sw/software/x86_64-slc6-gcc46-opt/17.8.0 --kv-disable ALL --kv-enable $KVSUITE --kv-conf $KVBMK --kv-keep --kvpost --kvpost-tag $KVTAG --tthreads $KVTHR > $KVLOG
 
 TESTDIR=`ls -tr | grep kvtest_ | tail -1`
 df -h > space_available.log

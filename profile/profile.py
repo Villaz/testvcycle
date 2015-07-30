@@ -145,9 +145,9 @@ def parse_metadata(cloud, vo):
     result['metadata'].update({'osdist':commands.getoutput("lsb_release -d 2>/dev/null").split(":")[1][1:]})
     result['metadata'].update({'pyver': sys.version.split()[0]})
     result['metadata'].update({'cpuname': commands.getoutput("cat /proc/cpuinfo | grep '^model name' | tail -n 1").split(':')[1].lstrip()})
-    result['metadata'].update({'cpunum' : commands.getoutput("cat /proc/cpuinfo | grep '^processor' |wc -l")})
-    result['metadata'].update({'bogomips': commands.getoutput("cat /proc/cpuinfo | grep '^bogomips' | tail -n 1").split(':')[1].lstrip()})
-    result['metadata'].update({'meminfo': commands.getoutput("cat /proc/meminfo | grep 'MemTotal:'").split()[1]})
+    result['metadata'].update({'cpunum' : int(commands.getoutput("cat /proc/cpuinfo | grep '^processor' |wc -l"))})
+    result['metadata'].update({'bogomips': float(commands.getoutput("cat /proc/cpuinfo | grep '^bogomips' | tail -n 1").split(':')[1].lstrip())})
+    result['metadata'].update({'meminfo': float(commands.getoutput("cat /proc/meminfo | grep 'MemTotal:'").split()[1])})
     return result
 
 
@@ -162,7 +162,7 @@ def generate_rkv(document):
                 if "%s_values" % metric not in rkv[type]:
                     rkv[type]["%s_values" % metric] = []
                 rkv[type]["%s_values" % metric].append(document['profiles']['kv'][thread][type][metric]['value'])
-    print rkv
+    return rkv
 
 def send_queue(host, port, username, password, queue, body):
     import stomp
