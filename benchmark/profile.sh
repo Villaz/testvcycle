@@ -197,7 +197,7 @@ export end_kv_test=`date +%s`
 cat <<X5_EOF >/tmp/parser
 source /usr/python-env/bin/activate
 python $PWD/parser.py -i $ID -c $CLOUD -v $VO
-python $PWD/send.py -p $QUEUE_PORT -s $QUEUE_HOST -u $QUEUE_USERNAME -p $QUEUE_PASSWORD -n $QUEUE_NAME -f /tmp/result_profile.json
+python $PWD/send_queue.py -p $QUEUE_PORT -s $QUEUE_HOST -u $QUEUE_USERNAME -p $QUEUE_PASSWORD -n $QUEUE_NAME -f /tmp/result_profile.json
 deactivate
 X5_EOF
 chmod ugo+rx /tmp/parser
