@@ -73,7 +73,7 @@ echo "end sw-mgr ${SW_MGR_STOP}" >> $PERFMONLOG
 grep -H PerfMon $TESTDIR/KV.thr.*/data/*/*log >> $PERFMONLOG
 }
 
-function DIRAC_cpu_normalization{
+function DIRAC_cpu_normalization(){
 yum install -y python-devel
 yum install -y openssl-devel
 pip install GSI
