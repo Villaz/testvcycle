@@ -120,11 +120,14 @@ def parse_phoronix():
    result = {'phoronix': {}}
    for f in listdir(path):
       if f.find('pts-results-viewer') < 0 and f[0] is not '.':
-         tree = ET.parse("%s/%s/%s" % (path, f, "test-1.xml"))
-         root = tree.getroot()
-         title = root.find('Result').find('Title').text
-         value = float(root.find('Result').find('Data').find('Entry').find('Value').text)
-         result['phoronix'].update({title: float(value)})
+         try:
+            tree = ET.parse("%s/%s/%s" % (path, f, "test-1.xml"))
+            root = tree.getroot()
+            title = root.find('Result').find('Title').text
+            value = float(root.find('Result').find('Data').find('Entry').find('Value').text)
+            result['phoronix'].update({title: float(value)})
+         except Exception:
+             pass
    return result
 
 

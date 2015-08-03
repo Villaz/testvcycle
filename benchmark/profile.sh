@@ -189,3 +189,5 @@ X5_EOF
 chmod ugo+rx /tmp/parser
 
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 "/tmp/parser"
+#Clean the folder
+rm -rf /home/phoronix/.phoronix-test-suite/test-results/*
