@@ -4,6 +4,7 @@ import json
 import time
 import sys
 import commands
+import os
 from os import listdir
 import xml.etree.ElementTree as ET
 import argparse
@@ -167,8 +168,11 @@ if __name__ == '__main__':
     parser.add_argument("-c", "--cloud", nargs='?', help="Cloud")
     args = parser.parse_args()
 
-
     result = parse_metadata(args.id, args.cloud, args.vo)
+    if 'init_test' in os.environ:
+        result.update({'start': os.environ['init_test']})
+    if 'end_test' in os.environ:
+        result.update({'end': os.environ['end_test']})
     result.update({'profiles': {}})
     result['profiles'].update(parse_phoronix())
     result['profiles'].update(parse_kv())
