@@ -9,6 +9,8 @@ from os import listdir
 import xml.etree.ElementTree as ET
 import argparse
 import ipgetter
+import pymongo
+from pymongo import MongoClient
 
 
 def extract_values(line):
@@ -187,5 +189,10 @@ if __name__ == '__main__':
 
     file = "/tmp/result_profile.json"
     open(file,'w').write(json.dumps(result))
+    
+    mongo_db_url = os.environ['MONGO_DB']
+    client = MongoClient(mongo_db_url)
+    db = client.infinity
+    db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
 
 
