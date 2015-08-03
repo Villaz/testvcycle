@@ -122,6 +122,7 @@ pip install requests
 pip install python-geoip
 pip install python-geoip-geolite2
 pip install ipgetter
+pip install pymongo
 pip install stomp.py
 deactivate
 
