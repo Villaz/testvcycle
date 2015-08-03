@@ -3,8 +3,8 @@ __author__ = 'Luis Villazon Esteban'
 import json
 import time
 import sys
-import commands
 import os
+import commands
 from os import listdir
 import xml.etree.ElementTree as ET
 import argparse
@@ -33,7 +33,7 @@ def fill_results(result, key, lines, i):
     cpu = extract_values(lines[i+1])
     real = extract_values(lines[i+2])
     vmem = extract_values(lines[i+3])
-    result.update({key: {'entries': entries,
+    result.update({key: {'entries': int(entries),
                          'cpu': cpu,
                          'real': real,
                          'vmem': vmem
@@ -82,7 +82,9 @@ def fill_memory_leak_results(result, key, lines, i):
 
 
 def parse_kv():
-    result = {'kv': {}}
+    result = {'kv': {'start': os.environ['init_kv_test'],
+                     'end': os.environ['end_kv_test']}}
+
     path = "/scratch/KV"
     file_name = None
     for f in listdir(path):
@@ -116,19 +118,20 @@ def parse_kv():
 
 
 def parse_phoronix():
-   path = '/home/phoronix/.phoronix-test-suite/test-results'
-   result = {'phoronix': {}}
-   for f in listdir(path):
-      if f.find('pts-results-viewer') < 0 and f[0] is not '.':
-         try:
-            tree = ET.parse("%s/%s/%s" % (path, f, "test-1.xml"))
-            root = tree.getroot()
-            title = root.find('Result').find('Title').text
-            value = float(root.find('Result').find('Data').find('Entry').find('Value').text)
-            result['phoronix'].update({title: float(value)})
-         except Exception:
-             pass
-   return result
+    path = '/home/phoronix/.phoronix-test-suite/test-results'
+    result = {'phoronix': {'start': os.environ['init_phoronix_test'],
+                           'end': os.environ['end_phoronix_test']}}
+    for f in listdir(path):
+        if f.find('pts-results-viewer') < 0 and f[0] is not '.':
+            try:
+                tree = ET.parse("%s/%s/%s" % (path, f, "test-1.xml"))
+                root = tree.getroot()
+                title = root.find('Result').find('Title').text
+                value = float(root.find('Result').find('Data').find('Entry').find('Value').text)
+                result['phoronix'].update({title: float(value)})
+            except Exception:
+                  pass
+    return result
 
 
 def parse_metadata(id, cloud, vo):
@@ -155,11 +158,16 @@ def generate_rkv(document):
             if type not in ['evt', 'initialization', 'finalization']: continue;
             if type not in rkv:
                 rkv[type] = {}
+            entries = 0
             for metric in document['profiles']['kv'][thread][type]:
-                if metric == 'entries' or metric not in ['cpu', 'real']: continue;
+                if metric == 'entries':
+                    entries += document['profiles']['kv'][thread][type]['entries']
+
+                if metric not in ['cpu', 'real']: continue;
                 if "%s_values" % metric not in rkv[type]:
                     rkv[type]["%s_values" % metric] = []
                 rkv[type]["%s_values" % metric].append(document['profiles']['kv'][thread][type][metric]['value'])
+            rkv[type]["entries"] = entries
     return rkv
 
 
@@ -172,10 +180,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     result = parse_metadata(args.id, args.cloud, args.vo)
-    if 'init_test' in os.environ:
-        result.update({'start': os.environ['init_test']})
-    if 'end_test' in os.environ:
-        result.update({'end': os.environ['end_test']})
     result.update({'profiles': {}})
     result['profiles'].update(parse_phoronix())
     result['profiles'].update(parse_kv())
