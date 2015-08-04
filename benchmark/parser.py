@@ -199,10 +199,10 @@ if __name__ == '__main__':
     file = "/tmp/result_profile.json"
     open(file,'w').write(json.dumps(result))
 
-    if 'MONGO_DB' in os.environ:
+    if 'MONGO_DB' in os.environ and 'HOSTNAME' in os.environ:
         mongo_db_url = os.environ['MONGO_DB']
         client = MongoClient(mongo_db_url)
         db = client.infinity
-        db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result}})
+        db.computer_test.find_one_and_update({'hostname': os.environ['HOSTNAME']},{'$set': {'profile': result}})
 
 

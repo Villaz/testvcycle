@@ -185,12 +185,12 @@ if [ ! -f /home/phoronix/phoronix.tar.gz ]; then
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'source /usr/python-env/bin/activate; python /tmp/download.py; deactivate; cd /home/phoronix/; tar -zxvf /home/phoronix/phoronix.tar.gz'
 fi
 
-echo 'export init_phoronix_test=`date +%s`' > /tmp/times.source
+echo "export init_phoronix_test=`date +%s`" > /tmp/times.source
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/encode-mp3'
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/x264'
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/build-linux-kernel'
-echo 'export end_phoronix_test=`date +%s`' >> /tmp/times.source
+echo "export end_phoronix_test=`date +%s`" >> /tmp/times.source
 
 
 #execute DIRAC Benchmark
@@ -198,9 +198,9 @@ echo 'export end_phoronix_test=`date +%s`' >> /tmp/times.source
 
 #execute KV Benchmark
 dump_kv_file
-echo 'export init_kv_test=`date +%s`' >> /tmp/times.source
+echo "export init_kv_test=`date +%s`" >> /tmp/times.source
 kv
-echo 'export end_kv_test=`date +%s`' >> /tmp/times.source
+echo "export end_kv_test=`date +%s`" >> /tmp/times.source
 
 
 #Parse the tests
