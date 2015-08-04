@@ -193,6 +193,6 @@ if __name__ == '__main__':
     mongo_db_url = os.environ['MONGO_DB']
     client = MongoClient(mongo_db_url)
     db = client.infinity
-    db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result, 'urls': urls}})
+    db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result}})
 
 
