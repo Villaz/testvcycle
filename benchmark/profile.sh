@@ -199,13 +199,14 @@ echo 'export end_kv_test=`date +%s`' >> /tmp/times.source
 #Parse the tests
 cat <<X5_EOF >/tmp/parser
 source /usr/python-env/bin/activate
+source /tmp/times.source
+source /usr/share/sources
 python /var/spool/checkout/testvcycle/benchmark/parser.py -i $ID -c $CLOUD -v $VO
 python /var/spool/checkout/testvcycle/benchmark/send_queue.py --port=$QUEUE_PORT --server=$QUEUE_HOST --username=$QUEUE_USERNAME --password=$QUEUE_PASSWORD --name=$QUEUE_NAME --file=/tmp/result_profile.json
 deactivate
 X5_EOF
 chmod ugo+rx /tmp/parser
 
-source /tmp/times.source
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 "/tmp/parser"
 #Clean the folder
 rm -rf /home/phoronix/.phoronix-test-suite/test-results/*
