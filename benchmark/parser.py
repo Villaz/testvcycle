@@ -12,6 +12,62 @@ import ipgetter
 import pymongo
 from pymongo import MongoClient
 
+import random
+import multiprocessing
+
+UNITS = {'HS06': 1., 'SI00': 1. / 344.}
+
+def getCPUNormalization(i, reference='HS06', iterations=1):
+    """
+    Get Normalized Power of the current CPU in [reference] units
+    """
+    if reference not in UNITS:
+        print('Unknown Normalization unit %s' % str(reference))
+    """
+        return S_ERROR( 'Unknown Normalization unit %s' % str( reference ) )
+    """
+    try:
+        iter = max(min(int(iterations), 10), 1)
+    except (TypeError, ValueError), x:
+        print(x)
+    """
+        return S_ERROR( x )
+    """
+
+    # This number of iterations corresponds to 360 HS06 seconds
+    n = int(1000 * 1000 * 12.5)
+    calib = 360.0 / UNITS[reference]
+
+    m = 0L
+    m2 = 0L
+    p = 0
+    p2 = 0
+    # Do one iteration extra to allow CPUs with variable speed
+    for i in range(iterations + 1):
+        if i == 1:
+            start = os.times()
+        # Now the iterations
+        for j in range(n):
+            t = random.normalvariate(10, 1)
+            m += t
+            m2 += t * t
+            p += t
+            p2 += t * t
+
+    end = os.times()
+    cput = sum( end[:4] ) - sum( start[:4] )
+    wall = end[4] - start[4]
+
+    """
+    if not cput:
+        return S_ERROR( 'Can not get used CPU' )
+    """
+
+    return calib * iterations / cput
+    """
+    print( {'CPU': cput, 'WALL':wall, 'NORM': calib * iterations / cput, 'UNIT': reference } )
+    return S_OK( {'CPU': cput, 'WALL':wall, 'NORM': calib * iterations / cput, 'UNIT': reference } )
+    """
 
 def extract_values(line):
     """Extract the values from the line and return a dictionary with the value, error, and unit"""
@@ -138,10 +194,11 @@ def parse_phoronix():
 
 
 def parse_dirac():
-    if 'dirac_value' in os.environ:
-        return {'dirac': {'value': os.environ['dirac_value'], 'unit': os.environ['dirac_unit']}}
-    else:
-        return None
+    cores = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=cores)
+    results = pool.map(getCPUNormalization, range(cores))
+    return {'fastBmk': {'value': sum(results), 'unit': 'HS06'}}
+
 
 def parse_metadata(id, cloud, vo):
     result = {'metadata':{}}
@@ -193,8 +250,7 @@ if __name__ == '__main__':
     result['profiles'].update(parse_phoronix())
     result['profiles'].update(parse_kv())
     result['profiles'].update({'rkv': generate_rkv(result)})
-    if 'dirac_unit' in os.environ:
-        result['profiles'].update(parse_dirac())
+    result['profiles'].update(parse_dirac())
 
     file = "/tmp/result_profile.json"
     open(file,'w').write(json.dumps(result))

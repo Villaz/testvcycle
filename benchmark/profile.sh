@@ -73,20 +73,6 @@ echo "end sw-mgr ${SW_MGR_STOP}" >> $PERFMONLOG
 grep -H PerfMon $TESTDIR/KV.thr.*/data/*/*log >> $PERFMONLOG
 }
 
-function DIRAC_cpu_normalization(){
-yum install -y python-devel
-yum install -y openssl-devel
-pip install GSI
-cd /root
-git clone https://github.com/DIRACGrid/DIRAC
-export PYTHONPATH=${PYTHONPATH}:/root/:/root/DIRAC
-dirac_result=`/root/DIRAC/WorkloadManagementSystem/scripts/dirac-wms-cpu-normalization.py`
-dirac_value=`$dirac_result | cut -d ' ' -f 6`
-dirac_unit=`$dirac_result | cut -d ' ' -f 7`
-
-echo "dirac_value=$dirac_value" > /tmp/dirac.sources
-echo "dirac_unit=$dirac_unit" >> /tmp/dirac.sources
-}
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -193,9 +179,6 @@ sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoron
 echo "export end_phoronix_test=`date +%s`" >> /tmp/times.source
 
 
-#execute DIRAC Benchmark
-#DIRAC_cpu_normalization
-
 #execute KV Benchmark
 dump_kv_file
 echo "export init_kv_test=`date +%s`" >> /tmp/times.source
@@ -207,7 +190,6 @@ echo "export end_kv_test=`date +%s`" >> /tmp/times.source
 cat <<X5_EOF >/tmp/parser
 source /usr/python-env/bin/activate
 source /tmp/times.source
-source /tmp/dirac.sources
 source /usr/share/sources
 python /var/spool/checkout/testvcycle/benchmark/parser.py -i $ID -c $CLOUD -v $VO
 python /var/spool/checkout/testvcycle/benchmark/send_queue.py --port=$QUEUE_PORT --server=$QUEUE_HOST --username=$QUEUE_USERNAME --password=$QUEUE_PASSWORD --name=$QUEUE_NAME --file=/tmp/result_profile.json
