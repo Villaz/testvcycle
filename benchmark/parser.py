@@ -128,9 +128,10 @@ def parse_phoronix():
             try:
                 tree = ET.parse("%s/%s/%s" % (path, f, "test-1.xml"))
                 root = tree.getroot()
+                metric = root.find('Result').find('Scale').text
                 title = root.find('Result').find('Title').text
                 value = float(root.find('Result').find('Data').find('Entry').find('Value').text)
-                result['phoronix'].update({title: float(value)})
+                result['phoronix'].update({title: {'value':float(value), 'unit': metric}})
             except Exception:
                   pass
     return result

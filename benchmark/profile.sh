@@ -175,8 +175,10 @@ with open('/home/phoronix/phoronix.tar.gz', 'wb') as f:
 EOF
 chmod ugo+rx /tmp/download.py
 
+if [ ! -f /home/phoronix/phoronix.tar.gz ]; then
 #download phoronix data and execute the tests
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'source /usr/python-env/bin/activate; python /tmp/download.py; deactivate; cd /home/phoronix/; tar -zxvf /home/phoronix/phoronix.tar.gz'
+fi
 
 echo 'export init_phoronix_test=`date +%s`' > /tmp/times.source
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
