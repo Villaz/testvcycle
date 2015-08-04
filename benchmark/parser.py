@@ -137,6 +137,12 @@ def parse_phoronix():
     return result
 
 
+def parse_dirac():
+    if 'dirac_value' in os.environ:
+        return {'dirac': {'value': os.environ['dirac_value'], 'unit': os.environ['dirac_unit']}}
+    else:
+        return None
+
 def parse_metadata(id, cloud, vo):
     result = {'metadata':{}}
     result.update({'_id': "%s_%s" % (id, str(int(time.time())))})
@@ -187,13 +193,16 @@ if __name__ == '__main__':
     result['profiles'].update(parse_phoronix())
     result['profiles'].update(parse_kv())
     result['profiles'].update({'rkv': generate_rkv(result)})
+    if 'dirac_unit' in os.environ:
+        result['profiles'].update(parse_dirac())
 
     file = "/tmp/result_profile.json"
     open(file,'w').write(json.dumps(result))
-    
-    mongo_db_url = os.environ['MONGO_DB']
-    client = MongoClient(mongo_db_url)
-    db = client.infinity
-    db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result}})
+
+    if 'MONGO_DB' in os.environ:
+        mongo_db_url = os.environ['MONGO_DB']
+        client = MongoClient(mongo_db_url)
+        db = client.infinity
+        db.computer_test.find_one_and_update({'hostname': args.id},{'$set': {'profile': result}})
 
 
