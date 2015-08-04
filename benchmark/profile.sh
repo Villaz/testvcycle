@@ -178,21 +178,23 @@ chmod ugo+rx /tmp/download.py
 #download phoronix data and execute the tests
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'source /usr/python-env/bin/activate; python /tmp/download.py; deactivate; cd /home/phoronix/; tar -zxvf /home/phoronix/phoronix.tar.gz'
 
-export init_phoronix_test=`date +%s`
+echo 'export init_phoronix_test=`date +%s`' > /tmp/times.source
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
 #sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/encode-mp3'
 #sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/x264'
 #sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/build-linux-kernel'
-export end_phoronix_test=`date +%s`
+echo 'export end_phoronix_test=`date +%s`' >> /tmp/times.source
+
 
 #execute DIRAC Benchmark
 #DIRAC_cpu_normalization
 
 #execute KV Benchmark
 dump_kv_file
-export init_kv_test=`date +%s`
+echo 'export init_kv_test=`date +%s`' >> /tmp/times.source
 kv
-export end_kv_test=`date +%s`
+echo 'export end_kv_test=`date +%s`' >> /tmp/times.source
+
 
 #Parse the tests
 cat <<X5_EOF >/tmp/parser
@@ -203,6 +205,7 @@ deactivate
 X5_EOF
 chmod ugo+rx /tmp/parser
 
+source /tmp/times.source
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 "/tmp/parser"
 #Clean the folder
 rm -rf /home/phoronix/.phoronix-test-suite/test-results/*
