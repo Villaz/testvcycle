@@ -256,9 +256,10 @@ if __name__ == '__main__':
     open(file,'w').write(json.dumps(result))
 
 
+    import socket
     mongo_db_url = os.environ['MONGO_DB']
     client = MongoClient(mongo_db_url)
     db = client.infinity
-    db.computer_test.find_one_and_update({'hostname': os.environ['HOSTNAME']},{'$set': {'profile': result}})
+    db.computer_test.find_one_and_update({'hostname': socket.gethostname()},{'$set': {'profile': result}})
 
 
