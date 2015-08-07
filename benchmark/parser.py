@@ -141,7 +141,8 @@ def fill_memory_leak_results(result, key, lines, i):
 
 def parse_kv():
     result = {'kv': {'start': os.environ['init_kv_test'],
-                     'end': os.environ['end_kv_test']}}
+                     'end': os.environ['end_kv_test'],
+                     'kv_tag': "KV-Bmk-%s" % args.cloud}}
 
     path = "/scratch/KV"
     file_name = None
