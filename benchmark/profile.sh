@@ -171,6 +171,7 @@ if [ ! -f /home/phoronix/phoronix.tar.gz ]; then
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'source /usr/python-env/bin/activate; python /tmp/download.py; deactivate; cd /home/phoronix/; tar -zxvf /home/phoronix/phoronix.tar.gz'
 fi
 
+echo "export init_tests=`date +%s`" > /tmp/times.source
 echo "export init_phoronix_test=`date +%s`" > /tmp/times.source
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/compress-7zip'
 sshpass -p "phoronix" ssh -o StrictHostKeyChecking=no phoronix@127.0.0.1 'phoronix-test-suite batch-run pts/encode-mp3'
@@ -191,7 +192,7 @@ cat <<X5_EOF >/tmp/parser
 source /usr/python-env/bin/activate
 source /tmp/times.source
 source /usr/share/sources
-python /var/spool/checkout/testvcycle/benchmark/parser.py -i $ID -c $CLOUD -v $VO
+python /var/spool/checkout/testvcycle/benchmark/parser.py -i $ID -c $CLOUD -v "$VO
 python /var/spool/checkout/testvcycle/benchmark/send_queue.py --port=$QUEUE_PORT --server=$QUEUE_HOST --username=$QUEUE_USERNAME --password=$QUEUE_PASSWORD --name=$QUEUE_NAME --file=/tmp/result_profile.json
 deactivate
 X5_EOF

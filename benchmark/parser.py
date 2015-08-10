@@ -202,9 +202,11 @@ def parse_dirac():
 
 
 def parse_metadata(id, cloud, vo):
+    start_time = time.strftime('%Y%m%dT%H%M%SZ', time.localtime(int(os.environ['init_tests'])))
+
     result = {'metadata':{}}
-    result.update({'_id': "%s_%s" % (id, str(int(time.time())))})
-    result.update({'_timestamp': int(time.time())})
+    result.update({'_id': "%s_%s" % (id, start_time)})
+    result.update({'_timestamp': start_time})
     result['metadata'].update({'ip': ipgetter.myip()})
     result['metadata'].update({'cloud': cloud})
     result['metadata'].update({'UID': id})
