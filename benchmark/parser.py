@@ -202,7 +202,7 @@ def parse_dirac():
 
 
 def parse_metadata(id, cloud, vo):
-    start_time = time.strftime('%Y%m%dT%H%M%SZ', time.localtime(int(os.environ['init_tests'])))
+    start_time = time.strftime('%Y-%m-%dT%H:%M%:%SZ', time.localtime(int(os.environ['init_tests'])))
 
     result = {'metadata':{}}
     result.update({'_id': "%s_%s" % (id, start_time)})
