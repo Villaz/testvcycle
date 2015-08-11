@@ -193,7 +193,7 @@ source /usr/python-env/bin/activate
 source /tmp/times.source
 source /usr/share/sources
 python /var/spool/checkout/testvcycle/benchmark/parser.py -i $ID -c $CLOUD -v $VO
-python /var/spool/checkout/testvcycle/benchmark/send_queue.py --port=$QUEUE_PORT --server=$QUEUE_HOST --username=$QUEUE_USERNAME --password=$QUEUE_PASSWORD --name=$QUEUE_NAME --file=/tmp/result_profile.json
+#python /var/spool/checkout/testvcycle/benchmark/send_queue.py --port=$QUEUE_PORT --server=$QUEUE_HOST --username=$QUEUE_USERNAME --password=$QUEUE_PASSWORD --name=$QUEUE_NAME --file=/tmp/result_profile.json
 deactivate
 X5_EOF
 chmod ugo+rx /tmp/parser
