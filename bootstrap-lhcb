@@ -165,7 +165,7 @@ cp $CONTEXTDIR/glexec /opt/glite/sbin/glexec
 chmod ugo+x /opt/glite/sbin/glexec
 
 # Now run the pilot script, possibly with the IaaS metadata updated VM_UUID
-/usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=CLOUD.Azure.ch --ce-name=vcycle-egi-01.cern.ch --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1
+/usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=CLOUD.Azure.ch --ce-name=egi-01.cern.ch --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1
 
 $CONTEXTDIR/ParseJobAgentLog /etc/machineoutputs/vm-pilot.log > /etc/machineoutputs/shutdown_message
 
