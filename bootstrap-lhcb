@@ -22,6 +22,9 @@ case $i in
     --dirac-site=*)
     DIRAC_SITE="${i#*=}"
     ;;
+    --ce-name=*)
+    CE_NAME="${i#*=}"
+    ;;
     --vm-uuid=*)
     VM_UUID=`echo "${i#*=}" | sed 's/#.*$//'`
     ;;
@@ -164,8 +167,12 @@ mkdir -p /opt/glite/sbin
 cp $CONTEXTDIR/glexec /opt/glite/sbin/glexec
 chmod ugo+x /opt/glite/sbin/glexec
 
+# Remove the line LocalSite/SubmitPool=Test
+sed  '\/LocalSite\/SubmitPool=Test/d' /var/spool/checkout/vm-pilot > /var/spool/checkout/vm-pilot_bak
+cp /var/spool/checkout/vm-pilot_bak /var/spool/checkout/vm-pilot
+
 # Now run the pilot script, possibly with the IaaS metadata updated VM_UUID
-/usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=CLOUD.Azure.ch --ce-name=egi-01.cern.ch --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1
+/usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=$DIRAC_SITE --ce-name=$CE_NAME --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1
 
 $CONTEXTDIR/ParseJobAgentLog /etc/machineoutputs/vm-pilot.log > /etc/machineoutputs/shutdown_message
 
