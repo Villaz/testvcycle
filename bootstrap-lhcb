@@ -171,6 +171,9 @@ chmod ugo+x /opt/glite/sbin/glexec
 sed  '\/LocalSite\/SubmitPool=Test/d' /var/spool/checkout/vm-pilot > /var/spool/checkout/vm-pilot_bak
 cp /var/spool/checkout/vm-pilot_bak /var/spool/checkout/vm-pilot
 
+sed  's/--MaxCycles 1/--MaxCycles 5/g' /var/spool/checkout/vm-pilot > /var/spool/checkout/vm-pilot_bak
+cp /var/spool/checkout/vm-pilot_bak /var/spool/checkout/vm-pilot
+
 # Now run the pilot script, possibly with the IaaS metadata updated VM_UUID
 /usr/bin/sudo -n -u dirac $CONTEXTDIR/vm-pilot --dirac-site=$DIRAC_SITE --ce-name=$CE_NAME --vm-uuid="$VM_UUID" >>/etc/machineoutputs/vm-pilot.log 2>&1
 
