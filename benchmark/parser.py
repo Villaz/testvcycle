@@ -152,6 +152,7 @@ def parse_kv():
             break
 
     if file_name is None:
+        send_alert_email()
         return result
 
     file = open(file_name, "r")
@@ -208,6 +209,7 @@ def parse_metadata(id, cloud, vo):
     result.update({'_id': "%s_%s" % (id, start_time)})
     result.update({'_timestamp': start_time})
     result['metadata'].update({'ip': ipgetter.myip()})
+    result['metadata'].update({'classification': os.environ['HWINFO']})
     result['metadata'].update({'cloud': cloud})
     result['metadata'].update({'UID': id})
     result['metadata'].update({'VO': vo})
@@ -240,6 +242,24 @@ def generate_rkv(document):
     return rkv
 
 
+def send_alert_email():
+    try:
+        import smtplib
+        from email.message import Message
+        msg = Message()
+        msg['Subject'] = "Error parsing KV benchmark in %s" % parser.id
+        msg['From'] = os.environ['MESSAGE_FROM']
+        msg['To'] = os.environ['MESSAGE_TO']
+
+        s = smtplib.SMTP(os.environ['SMTP'])
+        s.starttls()
+        s.login(os.environ['SMTP_USER'], os.environ['SMTP_PASSWORD'])
+        s.sendmail(msg['From'], [msg['To']], msg.as_string())
+        s.quit()
+    except Exception as e:
+        #No variables defined to send email
+        pass
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -258,11 +278,11 @@ if __name__ == '__main__':
     file = "/tmp/result_profile.json"
     open(file,'w').write(json.dumps(result))
 
-
-    import socket
-    mongo_db_url = os.environ['MONGO_DB']
-    client = MongoClient(mongo_db_url)
-    db = client.infinity
-    db.computer_test.find_one_and_update({'hostname': socket.gethostname()},{'$set': {'profile': result}})
-
+    try:
+        mongo_db_url = os.environ['MONGO_DB']
+        client = MongoClient(mongo_db_url)
+        db = client.infinity
+        db.computer_test.find_one_and_update({'hostname': os.environ['HOSTNAME']},{'$set': {'profile': result}})
+    except:
+        pass
 

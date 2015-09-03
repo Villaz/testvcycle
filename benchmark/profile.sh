@@ -34,7 +34,7 @@ EOF
 
 function kv(){
 KVBMK="file:///tmp/KVbmk.xml"
-KVTAG=$SITE
+KVTAG="KV-Bmk-$CLOUD"
 KVTHR=`grep -c processor /proc/cpuinfo`
 
 rm -rf /scratch/KV/
@@ -121,6 +121,7 @@ deactivate
 #If OS is CernVM, php is not compatible, it should be removed and installed again
 yum -y install epel-release
 yum -y install lapack fio gcc-c++ yasm
+yum -y install ruby
 
 kernel=`uname -r`
 if [[ $kernel == *"cernvm"* ]]; then
@@ -192,8 +193,9 @@ cat <<X5_EOF >/tmp/parser
 source /usr/python-env/bin/activate
 source /tmp/times.source
 source /usr/share/sources
-python /var/spool/checkout/testvcycle/benchmark/parser.py -i $ID -c $CLOUD -v $VO
-python /var/spool/checkout/testvcycle/benchmark/send_queue.py --port=$QUEUE_PORT --server=$QUEUE_HOST --username=$QUEUE_USERNAME --password=$QUEUE_PASSWORD --name=$QUEUE_NAME --file=/tmp/result_profile.json
+export HWINFO=`ruby /var/spool/hwinfo.rb`
+python /var/spool/parser.py -i $ID -c $CLOUD -v $VO
+#python /var/spool/send_queue.py --port=$QUEUE_PORT --server=$QUEUE_HOST --username=$QUEUE_USERNAME --password=$QUEUE_PASSWORD --name=$QUEUE_NAME --file=/tmp/result_profile.json
 deactivate
 X5_EOF
 chmod ugo+rx /tmp/parser
